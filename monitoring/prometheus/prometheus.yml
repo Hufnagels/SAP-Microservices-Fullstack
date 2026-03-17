@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: auth-service
+    static_configs:
+      - targets: ["auth-service:8000"]
+  - job_name: orders-service
+    static_configs:
+      - targets: ["orders-service:8000"]
+  - job_name: inventory-service
+    static_configs:
+      - targets: ["inventory-service:8000"]
+  - job_name: reporting-service
+    static_configs:
+      - targets: ["reporting-service:8000"]
+  - job_name: sensor-ingest-service
+    static_configs:
+      - targets: ["sensor-ingest-service:8000"]
+  - job_name: sap-b1-adapter-service
+    static_configs:
+      - targets: ["sap-b1-adapter-service:8000"]

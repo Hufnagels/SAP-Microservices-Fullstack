@@ -1,0 +1,278 @@
+services:
+  traefik:
+    image: traefik:v3.3
+    command:
+      - --configfile=/etc/traefik/traefik.yml
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./api-gateway/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./api-gateway/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./data/rabbitmq:/var/lib/rabbitmq
+
+  # ── Auth DB — dedicated, isolated ────────────────────────────────────────────
+  # auth-service is the only consumer of this database.
+  postgres-auth:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./data/pg-auth:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  # ── Shared DB — one Postgres, multiple databases ──────────────────────────────
+  # Used by all non-auth services (orders, inventory, reporting, sensor).
+  # Each service connects to its own database within this instance.
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # POSTGRES_DB is not set — each service creates its own DB on first connect.
+      # See: services/<name>/app/database.py → CREATE DATABASE IF NOT EXISTS
+      POSTGRES_MULTIPLE_DATABASES: "orders_db,inventory_db,reporting_db,events_db"
+    volumes:
+      - ./data/pg-shared:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh:ro
+    ports:
+      - "5434:5432"
+
+  # ── Services ──────────────────────────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    environment:
+      APP_NAME: auth-service
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres-auth:5432/auth_db
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-256-bits-long}
+      JWT_EXPIRE_HOURS: ${JWT_EXPIRE_HOURS:-8}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - postgres-auth
+
+  orders-service:
+    build:
+      context: .
+      dockerfile: services/orders-service/Dockerfile
+    environment:
+      APP_NAME: orders-service
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/orders_db
+    depends_on:
+      - postgres
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: services/inventory-service/Dockerfile
+    environment:
+      APP_NAME: inventory-service
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/inventory_db
+    depends_on:
+      - postgres
+
+  reporting-service:
+    build:
+      context: .
+      dockerfile: services/reporting-service/Dockerfile
+    environment:
+      APP_NAME: reporting-service
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/reporting_db
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  sensor-ingest-service:
+    build:
+      context: .
+      dockerfile: services/sensor-ingest-service/Dockerfile
+    environment:
+      APP_NAME: sensor-ingest-service
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/events_db
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-guest}:${RABBITMQ_DEFAULT_PASS:-guest}@rabbitmq:5672/
+    depends_on:
+      - rabbitmq
+      - postgres
+
+  sap-b1-adapter-service:
+    build:
+      context: .
+      dockerfile: services/sap-b1-adapter-service/Dockerfile
+    environment:
+      APP_NAME: sap-b1-adapter-service
+      B1_BASE_URL: ${SAP_B1_SERVICE_LAYER_URL:-https://172.22.248.4:50000/b1s}
+      B1_COMPANY_DB: ${SAP_B1_COMPANY_DB:-BRD_PS_20250407}
+      B1_USER: ${SAP_B1_USERNAME:-termelesig}
+      B1_PASSWORD: ${SAP_B1_PASSWORD:-}
+      DST_SERVER: ${DST_SQL_SERVER:-mssql_server,1433}
+      DST_DB: ${DST_SQL_DB:-ReportingDB}
+      DST_USER: ${DST_SQL_USER:-sa}
+      DST_PASSWORD: ${DST_SQL_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-256-bits-long}
+      API_KEYS_JSON: ${SAP_API_KEYS_JSON:-{}}
+    networks:
+      - default
+      - db_net
+
+  # ── Files DB — metadata for file-service; accessible to any service via postgres-files:5432 ──
+  postgres-files:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: files_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./data/pg-files:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d files_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  file-service:
+    build:
+      context: .
+      dockerfile: services/file-service/Dockerfile
+    environment:
+      APP_NAME: file-service
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres-files:5432/files_db
+      STORAGE_DIR: /app/storage
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-256-bits-long}
+    volumes:
+      - ./files:/app/storage
+    depends_on:
+      postgres-files:
+        condition: service_healthy
+
+  postgres-maps:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: maps_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./data/pg-maps:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d maps_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  maps-service:
+    build:
+      context: .
+      dockerfile: services/maps-service/Dockerfile
+    environment:
+      APP_NAME: maps-service
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres-maps:5432/maps_db
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-256-bits-long}
+    depends_on:
+      postgres-maps:
+        condition: service_healthy
+
+  binpack-service:
+    build:
+      context: .
+      dockerfile: services/binpack-service/Dockerfile
+    environment:
+      APP_NAME: binpack-service
+
+  postgres-labeling:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: labeling_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./data/pg-labeling:/var/lib/postgresql/data
+    ports:
+      - "5437:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d labeling_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  labeling-service:
+    build:
+      context: .
+      dockerfile: services/labeling-service/Dockerfile
+    environment:
+      APP_NAME: labeling-service
+      PRINTER_IP: ${PRINTER_IP:-192.168.1.100}
+      PRINTER_PORT: ${PRINTER_PORT:-9100}
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres-labeling:5432/labeling_db
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-256-bits-long}
+    depends_on:
+      postgres-labeling:
+        condition: service_healthy
+
+  # ── Monitoring ────────────────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./data/prometheus:/prometheus
+
+  loki:
+    image: grafana/loki:3.0.0
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./data/loki:/loki
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./data/grafana:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+
+networks:
+  # db_net is owned by the infrastructure stack (infrastructure/mssql/docker-compose.yml).
+  # Start that stack first: make infra-up
+  db_net:
+    external: true
+    name: db_net

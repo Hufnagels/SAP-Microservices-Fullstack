@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+/* Leaflet + Geoman imported AFTER Tailwind so their selectors win over
+   the preflight reset in the cascade. Centralised here to avoid Lightning
+   CSS double-processing when imported inside component files. */
+@import 'leaflet/dist/leaflet.css';
+@import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -1,0 +1,38 @@
+# ── MSSQL Infrastructure Stack ────────────────────────────────────────────────
+# Runs independently from the app stack.
+# Start this first: docker compose -f infrastructure/mssql/docker-compose.yml up -d
+#
+# Shares `db_net` with the main app stack.
+# The app stack declares db_net as external — this stack OWNS it.
+#
+# Lifecycle: this stack should survive `docker compose down -v` on the app stack.
+# Only run `docker compose -f infrastructure/mssql/docker-compose.yml down -v`
+# when you want to wipe the database completely.
+
+services:
+  mssql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: mssql_server
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-MyS3cureP@ss!}"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - ../../data/mssql:/var/opt/mssql
+    networks:
+      - db_net
+    restart: unless-stopped
+    healthcheck:
+      # azure-sql-edge has no sqlcmd; use a TCP probe via bash
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/1433' 2>/dev/null && echo ok || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+networks:
+  db_net:
+    name: db_net
+    driver: bridge

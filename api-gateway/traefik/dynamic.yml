@@ -1,0 +1,135 @@
+http:
+  middlewares:
+    secure-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+
+    cors:
+      headers:
+        accessControlAllowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+        accessControlAllowHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+        accessControlAllowOriginList: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://localhost:5177"]
+        accessControlMaxAge: 3600
+        addVaryHeader: true
+
+    strip-binpack:
+      stripPrefix:
+        prefixes: ["/binpack"]
+
+    strip-labeling:
+      stripPrefix:
+        prefixes: ["/labeling"]
+
+  routers:
+    auth:
+      rule: "PathPrefix(`/auth`)"
+      service: auth-service
+      entryPoints: [web]
+      middlewares: [cors]
+
+    orders:
+      rule: "PathPrefix(`/orders`)"
+      service: orders-service
+      entryPoints: [web]
+      middlewares: [cors]
+
+    inventory:
+      rule: "PathPrefix(`/inventory`)"
+      service: inventory-service
+      entryPoints: [web]
+      middlewares: [cors]
+
+    reporting:
+      rule: "PathPrefix(`/reporting`)"
+      service: reporting-service
+      entryPoints: [web]
+      middlewares: [cors]
+
+    sensor:
+      rule: "PathPrefix(`/sensor`)"
+      service: sensor-ingest-service
+      entryPoints: [web]
+      middlewares: [cors]
+
+    files:
+      rule: "PathPrefix(`/files`)"
+      service: file-service
+      entryPoints: [web]
+      middlewares: [cors]
+
+    sap:
+      rule: "PathPrefix(`/sap`)"
+      service: sap-b1-adapter-service
+      entryPoints: [web]
+      middlewares: [cors]
+
+    maps:
+      rule: "PathPrefix(`/maps`)"
+      service: maps-service
+      entryPoints: [web]
+      middlewares: [cors]
+
+    binpack:
+      rule: "PathPrefix(`/binpack`)"
+      service: binpack-service
+      entryPoints: [web]
+      middlewares: [cors, strip-binpack]
+
+    labeling:
+      rule: "PathPrefix(`/labeling`)"
+      service: labeling-service
+      entryPoints: [web]
+      middlewares: [cors, strip-labeling]
+
+  services:
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://auth-service:8000"
+
+    orders-service:
+      loadBalancer:
+        servers:
+          - url: "http://orders-service:8000"
+
+    inventory-service:
+      loadBalancer:
+        servers:
+          - url: "http://inventory-service:8000"
+
+    reporting-service:
+      loadBalancer:
+        servers:
+          - url: "http://reporting-service:8000"
+
+    sensor-ingest-service:
+      loadBalancer:
+        servers:
+          - url: "http://sensor-ingest-service:8000"
+
+    file-service:
+      loadBalancer:
+        servers:
+          - url: "http://file-service:8000"
+
+    sap-b1-adapter-service:
+      loadBalancer:
+        servers:
+          - url: "http://sap-b1-adapter-service:8000"
+
+    maps-service:
+      loadBalancer:
+        servers:
+          - url: "http://maps-service:8000"
+
+    binpack-service:
+      loadBalancer:
+        servers:
+          - url: "http://binpack-service:8000"
+
+    labeling-service:
+      loadBalancer:
+        servers:
+          - url: "http://labeling-service:8000"

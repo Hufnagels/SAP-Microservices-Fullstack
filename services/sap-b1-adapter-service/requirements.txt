@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+prometheus-client
+requests
+python-jose[cryptography]
+python-multipart
+pyodbc
