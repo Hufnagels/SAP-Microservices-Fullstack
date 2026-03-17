@@ -26,6 +26,7 @@
    - [8.5 live-labeling-ui](#85-live-labeling-ui-port-5178)
 9. [SAP B1 Sync Flow](#9-sap-b1-sync-flow-summary)
 10. [Troubleshooting](#10-troubleshooting)
+11. [Third-Party Sources](#11-third-party-sources)
 
 ---
 
@@ -591,3 +592,111 @@ make fe-labeling
 | Port 80 in use | Another process on :80 | `sudo lsof -i :80` → stop it |
 | Frontend shows old version | Docker has old image | `docker compose up -d --build <service>` |
 | `restart` didn't apply code changes | No volume mount; code baked into image | Use `docker compose up -d --build <service>` |
+
+---
+
+## 11. Third-Party Sources
+
+### Infrastructure & Runtime
+
+| Name | URL |
+|---|---|
+| Docker | https://www.docker.com |
+| Colima (macOS Docker runtime) | https://github.com/abiosoft/colima |
+| Traefik Proxy | https://traefik.io |
+| PostgreSQL | https://www.postgresql.org |
+| Microsoft SQL Server (azure-sql-edge) | https://hub.docker.com/_/microsoft-azure-sql-edge |
+| RabbitMQ | https://www.rabbitmq.com |
+| Prometheus | https://prometheus.io |
+| Grafana | https://grafana.com |
+| Grafana Loki | https://grafana.com/oss/loki |
+| OpenVPN | https://openvpn.net |
+
+### Backend (Python)
+
+| Name | URL |
+|---|---|
+| FastAPI | https://fastapi.tiangolo.com |
+| Uvicorn | https://www.uvicorn.org |
+| Pydantic | https://docs.pydantic.dev |
+| pydantic-settings | https://docs.pydantic.dev/latest/concepts/pydantic_settings |
+| python-jose (JWT) | https://github.com/mpdavis/python-jose |
+| bcrypt | https://github.com/pyca/bcrypt |
+| psycopg2 (PostgreSQL driver) | https://www.psycopg.org |
+| pyodbc (MSSQL driver) | https://github.com/mkleehammer/pyodbc |
+| Requests | https://requests.readthedocs.io |
+| SQLAlchemy | https://www.sqlalchemy.org |
+| prometheus-client | https://github.com/prometheus/client_python |
+| python-dotenv | https://github.com/theskumar/python-dotenv |
+
+### Frontend — Core Stack
+
+| Name | URL |
+|---|---|
+| React | https://react.dev |
+| TypeScript | https://www.typescriptlang.org |
+| Vite | https://vite.dev |
+| pnpm | https://pnpm.io |
+| MUI (Material UI) | https://mui.com |
+| MUI X Tree View | https://mui.com/x/react-tree-view |
+| MUI X Data Grid | https://mui.com/x/react-data-grid |
+| Emotion (CSS-in-JS) | https://emotion.sh |
+| Redux Toolkit | https://redux-toolkit.js.org |
+| React Redux | https://react-redux.js.org |
+| React Router | https://reactrouter.com |
+| axios | https://axios-http.com |
+| react-toastify | https://fkhadra.github.io/react-toastify |
+
+### Frontend — UI Components & Utilities
+
+| Name | URL |
+|---|---|
+| Material React Table | https://www.material-react-table.com |
+| TanStack Table | https://tanstack.com/table |
+| Recharts | https://recharts.org |
+| D3.js | https://d3js.org |
+| react-dropzone | https://react-dropzone.js.org |
+| react-avatar-editor | https://github.com/mosch/react-avatar-editor |
+| react-pdf | https://react-pdf.org |
+| mammoth.js (DOCX reader) | https://github.com/mwilliamson/mammoth.js |
+| xlsx (SheetJS) | https://sheetjs.com |
+| dnd kit (drag and drop) | https://dndkit.com |
+| nanoid | https://github.com/ai/nanoid |
+
+### Frontend — Label Designer
+
+| Name | URL |
+|---|---|
+| Konva | https://konvajs.org |
+| react-konva | https://konvajs.org/docs/react |
+| bwip-js (barcode/QR/DataMatrix renderer) | https://github.com/metafloor/bwip-js |
+
+### Frontend — Maps
+
+| Name | URL |
+|---|---|
+| Leaflet | https://leafletjs.com |
+| React Leaflet | https://react-leaflet.js.org |
+| Leaflet.markercluster | https://github.com/Leaflet/Leaflet.markercluster |
+| react-leaflet-cluster | https://github.com/akursat/react-leaflet-cluster |
+| Leaflet-Geoman (geometry editing) | https://geoman.io |
+
+### Frontend — 3D Bin Packing Visualization
+
+| Name | URL |
+|---|---|
+| Three.js | https://threejs.org |
+| React Three Fiber | https://r3f.docs.pmnd.rs |
+| React Three Drei | https://drei.docs.pmnd.rs |
+
+### Bin Packing — Algorithm Sources
+
+| Name / Title | URL |
+|---|---|
+| **3dbinpacking** by Enzo Ruiz ⭐ *(main implemented source)* | https://github.com/enzoruiz/3dbinpacking |
+| Circle Packing — Wolfram MathWorld | https://mathworld.wolfram.com/CirclePacking.html |
+| Frontiers in Mechanical Engineering — Circle packing article (2022) | https://www.frontiersin.org/journals/mechanical-engineering/articles/10.3389/fmech.2022.966691/full |
+| Math StackExchange — Maximum circles in a rectangle | https://math.stackexchange.com/questions/2548513/maximum-number-of-circle-packing-into-a-rectangle |
+| bed-bpp-env by Florian Kagerer | https://github.com/floriankagerer/bed-bpp-env |
+| unknown-binsize-3dpacker by KoukatsuMahoutsukai | https://github.com/KoukatsuMahoutsukai/unknown-binsize-3dpacker |
+| IR-BPP by alexfrom0815 | https://github.com/alexfrom0815/IR-BPP |
