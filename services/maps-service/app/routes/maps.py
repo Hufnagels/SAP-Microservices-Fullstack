@@ -57,6 +57,17 @@ class StoredShape(BaseModel):
     latlngs: Optional[list[list[float]]] = None
 
 
+class Partner(BaseModel):
+    id: Optional[int] = None
+    card_code: str
+    name: str
+    address: str = ""
+    sales: int = 0
+    lat: float
+    lon: float
+    synced_at: Optional[str] = None
+
+
 # ── Seed data ─────────────────────────────────────────────────────────────────
 
 _HISTORY_MARKERS: list[dict] = [
@@ -189,3 +200,16 @@ def put_shape(shape_id: int, shape: StoredShape):
 def del_shape(shape_id: int):
     if not db.delete_shape(shape_id):
         raise HTTPException(status_code=404, detail="Shape not found")
+
+
+# Partners
+
+@router.get("/partners", response_model=list[Partner])
+def get_partners():
+    return db.get_partners()
+
+
+@router.post("/partners/bulk", status_code=200)
+def bulk_partners(partners: list[Partner]):
+    count = db.bulk_upsert_partners([p.model_dump(exclude={"id", "synced_at"}) for p in partners])
+    return {"upserted": count}

@@ -4,8 +4,9 @@ from .database import (
     log_job_start,
     log_job_end,
     DatabaseError,
+    migrate_schema,
 )
-from .sap import fetch_b1_rows, VPNConnectionError
+from .sap import fetch_b1_rows, VPNConnectionError, check_vpn_connection
 
 __all__ = [
     "connect_sql",
@@ -13,6 +14,8 @@ __all__ = [
     "log_job_start",
     "log_job_end",
     "DatabaseError",
+    "migrate_schema",
     "fetch_b1_rows",
     "VPNConnectionError",
+    "check_vpn_connection",
 ]

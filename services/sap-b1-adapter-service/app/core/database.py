@@ -274,6 +274,62 @@ def write_to_sql_server(
         conn.close()
 
 
+def _add_column_if_missing(cur, table: str, col: str, col_type: str):
+    """Add a column to a table only if it doesn't already exist."""
+    cur.execute(
+        "SELECT COUNT(*) FROM sys.columns "
+        "WHERE object_id = OBJECT_ID(?) AND name = ?",
+        (f"dbo.{table}", col),
+    )
+    if cur.fetchone()[0] == 0:
+        cur.execute(f"ALTER TABLE dbo.[{table}] ADD [{col}] {col_type}")
+        logger.info("Added column %s.%s", table, col)
+
+
+def migrate_schema():
+    """
+    Idempotent schema migration — adds any columns missing from wrk_QueryDef
+    and logs_SyncJobs that the current code requires.
+    Safe to run on every startup.
+    """
+    _wrk_cols = [
+        ("created_by",                "NVARCHAR(100)  NULL"),
+        ("updated_by",                "NVARCHAR(100)  NULL"),
+        ("updated_at",                "DATETIME2      NULL"),
+        ("sql_b1_comp_base_query",    "NVARCHAR(MAX)  NULL"),
+        ("sql_b1_comp_extra_options", "NVARCHAR(MAX)  NULL"),
+        ("service_name",              "NVARCHAR(200)  NULL"),
+        ("base_table",                "NVARCHAR(200)  NULL"),
+        ("description",               "NVARCHAR(MAX)  NULL"),
+        ("is_active",                 "BIT            NOT NULL DEFAULT 1"),
+    ]
+    _jobs_cols = [
+        ("sync_type",     "NVARCHAR(20)   NULL"),
+        ("username",      "NVARCHAR(200)  NULL"),
+        ("rows_written",  "INT            NULL"),
+        ("error_message", "NVARCHAR(MAX)  NULL"),
+        ("finished_at",   "DATETIME2      NULL"),
+    ]
+
+    try:
+        conn = connect_sql()
+        try:
+            cur = conn.cursor()
+            for col, col_type in _wrk_cols:
+                _add_column_if_missing(cur, "wrk_QueryDef", col, col_type)
+            for col, col_type in _jobs_cols:
+                _add_column_if_missing(cur, "logs_SyncJobs", col, col_type)
+            conn.commit()
+            logger.info("Schema migration completed")
+        except Exception:
+            conn.rollback()
+            logger.exception("Schema migration failed (non-fatal)")
+        finally:
+            conn.close()
+    except Exception:
+        logger.exception("Could not connect for schema migration (non-fatal)")
+
+
 def log_job_start(cur, endpoint: str, sql_code: str, table: str,
                   username: str | None = None, sync_type: str = 'sync') -> int:
     """Log sync job start and return job_id"""

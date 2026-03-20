@@ -14,6 +14,7 @@ from app.core import (
     log_job_start,
     log_job_end,
     VPNConnectionError,
+    check_vpn_connection,
 )
 from app import security
 
@@ -43,6 +44,7 @@ def _lookup_sql_text(cur, sql_code: str) -> str | None:
 
 def _run_sync(*, endpoint: str, req: SyncRequest, username: str | None = None,
               sync_type: str = 'sync') -> dict:
+    check_vpn_connection()
     conn = connect_sql()
     job_id = None
     try:
@@ -121,6 +123,7 @@ def sync_async(req: SyncRequest, bg: BackgroundTasks, api_role: str = Depends(se
 
 def _start_sync_job(*, req: SyncRequest, username: str | None) -> int:
     """Insert RUNNING job row and return job_id — used to hand off to background task."""
+    check_vpn_connection()
     conn = connect_sql()
     try:
         cur = conn.cursor()
@@ -136,6 +139,7 @@ def _start_sync_job(*, req: SyncRequest, username: str | None) -> int:
 
 def _bg_run_sync(*, job_id: int, req: SyncRequest, username: str | None) -> None:
     """Background task: run the sync and update the pre-created job row."""
+    check_vpn_connection()
     conn = connect_sql()
     try:
         cur = conn.cursor()

@@ -10,7 +10,7 @@ Currently, two official plugins are available:
 ## FASTapi
 
 ~~~
-source "/Users/pisti/My Projects.local/dev/DockerContainers/BRD/sap/.sap_venv/bin/activate"
+source "~/dev/sap/.sap_venv/bin/activate"
 cd ./backend/app/
 uvicorn main:app --reload --host 0.0.0.0 --port 8080
 ~~~

@@ -1,5 +1,5 @@
 {
-  "name": "b1-map",
+  "name": "sap-map-ui",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,12 +10,23 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11",
+    "@emotion/styled": "^11",
+    "@mui/icons-material": "^7",
+    "@mui/material": "^7",
+    "@reduxjs/toolkit": "^2",
+    "@types/react-avatar-editor": "^13.0.4",
+    "axios": "^1",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
-    "react": "^19.0.0-rc.1",
-    "react-dom": "^19.0.0-rc.1",
-    "react-leaflet": "^5.0.0-rc.2",
+    "react": "^19.2.0",
+    "react-avatar-editor": "^14.0.0",
+    "react-dom": "^19.2.0",
+    "react-dropzone": "^15.0.0",
+    "react-leaflet": "^5.0.0",
     "react-leaflet-cluster": "^4.0.0",
+    "react-redux": "^9",
+    "react-router-dom": "^7",
     "react-toastify": "^11.0.5"
   },
   "devDependencies": {

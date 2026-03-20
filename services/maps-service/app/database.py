@@ -58,6 +58,18 @@ def init_db():
                     created_at  TIMESTAMPTZ DEFAULT NOW()
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS map_partners (
+                    id          SERIAL PRIMARY KEY,
+                    card_code   VARCHAR(15)  NOT NULL UNIQUE,
+                    name        VARCHAR(255) NOT NULL,
+                    address     TEXT         NOT NULL DEFAULT '',
+                    sales       BIGINT       NOT NULL DEFAULT 0,
+                    lat         DOUBLE PRECISION NOT NULL,
+                    lon         DOUBLE PRECISION NOT NULL,
+                    synced_at   TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
 
 
 # ── Formatters ────────────────────────────────────────────────────────────────
@@ -212,3 +224,52 @@ def delete_custom(item_id: int) -> bool:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM map_custom WHERE id=%s", (item_id,))
             return cur.rowcount > 0
+
+
+# ── Partners CRUD ─────────────────────────────────────────────────────────────
+
+def _fmt_partner(row: dict) -> dict:
+    return {
+        "id":        row["id"],
+        "card_code": row["card_code"],
+        "name":      row["name"],
+        "address":   row["address"],
+        "sales":     row["sales"],
+        "lat":       row["lat"],
+        "lon":       row["lon"],
+        "synced_at": row["synced_at"].isoformat() if row.get("synced_at") else None,
+    }
+
+
+def get_partners() -> list[dict]:
+    with get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM map_partners ORDER BY sales DESC")
+            return [_fmt_partner(r) for r in cur.fetchall()]
+
+
+def bulk_upsert_partners(partners: list[dict]) -> int:
+    """Insert or update partners by card_code. Returns count written."""
+    if not partners:
+        return 0
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            psycopg2.extras.execute_values(cur, """
+                INSERT INTO map_partners (card_code, name, address, sales, lat, lon)
+                VALUES %s
+                ON CONFLICT (card_code) DO UPDATE SET
+                    name      = EXCLUDED.name,
+                    address   = EXCLUDED.address,
+                    sales     = EXCLUDED.sales,
+                    lat       = EXCLUDED.lat,
+                    lon       = EXCLUDED.lon,
+                    synced_at = NOW()
+            """, [(
+                p["card_code"],
+                p["name"],
+                p.get("address", ""),
+                p.get("sales", 0),
+                p["lat"],
+                p["lon"],
+            ) for p in partners])
+        return len(partners)

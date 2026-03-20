@@ -4,6 +4,201 @@ All notable changes to the MicroServices monorepo are documented here.
 
 ---
 
+## 2026-03-20 (session 11)
+
+### opcua-service — node-config CRUD bug fixes
+
+- **`app/routes/opcua.py`** — `NodeDefCreate` and `NodeDefUpdate` Pydantic models were missing `sim_behavior`, `sim_min`, `sim_max`, `sim_period` fields; FastAPI stripped them from the request body before they reached the DB → PUT always sent original values back
+- **`app/routes/opcua.py`** — `node_config_create` handler updated to pass sim params to `database.create_node()`
+- **`app/database.py`** — `update_node()` `allowed` set was missing `sim_behavior`, `sim_min`, `sim_max`, `sim_period` → silently ignored all sim field changes; set now includes all four
+- **`app/database.py`** — `create_node()` signature extended to accept `sim_behavior`, `sim_min`, `sim_max`, `sim_period`; INSERT updated accordingly
+
+### s7-status-ui — NodeDialog form reset bug fix
+
+- **`src/pages/nodeconfig/NodeConfigPage.tsx`** — removed `useEffect(() => { setForm(initial); }, [initial])` from `NodeDialog`; the `initial` prop is an inline object recreated on every parent re-render, so the effect fired continuously and overwrote user edits with the original DB values
+- Added `key={editTarget.id}` to the Edit dialog and `key={addOpen ? 'add-open' : 'add-closed'}` to the Add dialog — forces remount on open/target-change so `useState(initial)` initialises fresh without the effect
+
+### InfluxDB — org renamed  → `compani`
+
+`DOCKER_INFLUXDB_INIT_ORG` is bootstrap-only; renaming requires the HTTP API:
+```bash
+# Get org ID
+curl -s http://localhost:8086/api/v2/orgs -H "Authorization: Token my-super-secret-token"
+# Rename
+curl -X PATCH http://localhost:8086/api/v2/orgs/<id> \
+  -H "Authorization: Token my-super-secret-token" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"compani"}'
+```
+- **`.env`** — added `INFLUXDB_ORG=compani` (and full InfluxDB block)
+- **`docker-compose.yml`** — default changed to `compani`
+- **`monitoring/grafana/provisioning/datasources/datasources.yml`** — `organization: compani`
+- `opcua-service` rebuilt; `grafana` restarted
+
+### Grafana — OPC-UA dashboard rewrite
+
+- **`monitoring/grafana/provisioning/dashboards/opcua-dashboard.json`** — full rewrite:
+  - **Panel 1 — Temperature** (full row): dedicated timeseries, `node_name == "temperature"`, added missing `_field == "value"` filter
+  - **Panel 2 — Working Speed** (full row): new panel, `node_name == "working_speed"`; replaced the stale "Setpoint" gauge (Setpoint node no longer exists)
+  - **Panel 3 — Alarms State Timeline** (w=18): fixed query — added `map(fn: (r) => ({r with _value: int(v: r._value)}))` cast so state-timeline receives integers 0/1
+  - **Panel 4 — Active Alarms (last 5 min)** (w=6): unchanged logic, repositioned
+  - **Datasource variable**: changed from `${DS_INFLUXDB-OPC-UA}` (hyphens broke template resolution → Prometheus selected instead) to `${datasource}` with `"regex": "InfluxDB-OPC-UA"` — pins the variable to the correct datasource
+
+### README.md — major update
+
+- Architecture diagram updated: added `postgres-opcua`, `influxdb`, `opcua-simulator (--profile sim)`
+- Repo structure: added `opcua-simulator/` entry
+- External systems: added OPC-UA Simulator and InfluxDB 2.7
+- Section 8.6 s7-status-ui fully rewritten: pages table (Status / Charts / Node Config), Node Config details (unit Autocomplete, sim behaviors, trapezoidal period), Charts localStorage persistence, direct DB/InfluxDB connection params table, simulator quick-start
+- Troubleshooting: 5 new rows (OPC-UA 503, charts no data, node config PUT, sim hot-reload delay, sim_behavior reverts)
+- New subsection: "Renaming the InfluxDB organisation (without wiping data)" with step-by-step API commands and Grafana datasource settings table
+
+---
+
+## 2026-03-20 (session 10)
+
+### opcua-service — InfluxDB timeseries persistence
+
+- **`app/client.py`** — split `_default_nodes()` into `_default_process_nodes()` (floats → `DB_ProcessData`) and `_default_alarm_nodes()` (bools → `DB_Alarms`); `_read_all_nodes()` now returns a tuple `(process_data, alarm_data)`
+- **`app/client.py`** — added `InfluxWriter` class: async write using `influxdb_client[async]`; writes `process_data` and `alarms` InfluxDB measurements with line protocol after every poll cycle; `query()` method for Flux-based timeseries retrieval
+- **`app/client.py`** — `OPCUAPoller` now accepts `influx: InfluxWriter | None`; InfluxDB write errors are logged as warnings (do not kill the poll loop)
+- **`app/main.py`** — instantiates `InfluxWriter` in lifespan context, passes to poller, closes on shutdown
+- **`app/settings.py`** — added `influxdb_url`, `influxdb_token`, `influxdb_org`, `influxdb_bucket`
+- **`requirements.txt`** — added `influxdb-client[async]`
+- **`app/routes/opcua.py`** — added `GET /opcua/nodes` (returns process + alarm node name lists) and `GET /opcua/timeseries` (Flux query with measurement, node, from_ts, to_ts, limit params)
+
+### opcua-simulator — New Docker OPC-UA simulation server
+
+- **`services/opcua-simulator/`** — new service; asyncua `Server` on port 4840
+- Generates realistic data: Temperature (sine 20–30°C), Pressure (sine 0.95–1.05 bar), FlowRate (random walk 3–7), Setpoint (static 25)
+- Alarm nodes: `HighTemp` (Temp > 28), `LowPressure` (Pressure < 0.95), `Running` (always True)
+- Started with: `docker compose --profile sim up -d opcua-simulator`
+- Set `OPCUA_ENDPOINT=opc.tcp://opcua-simulator:4840` to use with opcua-service
+
+### docker-compose.yml — InfluxDB + simulator
+
+- Added `influxdb:2.7` service (port 8086, auto-setup bucket `opcua`)
+- Added `opcua-simulator` service under `profiles: [sim]`
+- `opcua-service` now depends on `influxdb`; 4 new INFLUXDB env vars injected
+- `grafana` now depends on `influxdb`
+
+### Grafana — OPC-UA dashboard provisioned
+
+- **`monitoring/grafana/provisioning/datasources/datasources.yml`** — added `InfluxDB-OPC-UA` datasource (Flux mode)
+- **`monitoring/grafana/provisioning/dashboards/dashboards.yml`** — created dashboard provider (folder: OPC-UA)
+- **`monitoring/grafana/provisioning/dashboards/opcua-dashboard.json`** — 4-panel dashboard: Process Data time series, Setpoint gauge, Active Alarms stat, Alarms State Timeline
+
+### opcua-service — node_definitions + sensor_units DB
+
+- **`app/database.py`** (new file) — PostgreSQL registry backed by `postgres-opcua` (port 5438, `opcua_db`)
+  - `node_definitions` table: `id, name, node_id, type, unit, description, is_active, sim_behavior, sim_min, sim_max, sim_period, created_at`; seeded with 7 nodes (Temperature, Pressure, Flow Rate, Working speed, High Temperature, Low Pressure, Running)
+  - `sensor_units` table: 45+ standard industrial units grouped by category (Temperature, Pressure, Flow, Speed, Electrical, Power, Weight, Time, Concentration); `UNIQUE(unit)` constraint, seeded once
+  - CRUD helpers: `list_nodes()`, `get_node()`, `create_node()`, `update_node()`, `delete_node()`, `build_node_maps()`; `list_sensor_units()`
+  - `build_node_maps()` returns `(process_nodes, alarm_nodes)` dicts keyed by `name.lower().replace(" ", "_")` → node_id; used by poller on startup and after hot-reload
+- **`app/settings.py`** — added `postgres_url`
+- **`app/main.py`** — calls `database.configure(settings.postgres_url)` in lifespan; initial `build_node_maps()` + `poller.reload_nodes()` on startup
+- **`app/routes/opcua.py`** — new endpoints:
+  - `GET /opcua/node-config` — list all node definitions (viewer+)
+  - `POST /opcua/node-config` — create node, hot-reload poller (operator+)
+  - `PUT /opcua/node-config/{id}` — update node, hot-reload poller (operator+)
+  - `DELETE /opcua/node-config/{id}` — delete node, hot-reload poller (operator+)
+  - `GET /opcua/sensor-units` — list all sensor units (viewer+)
+- **`app/client.py`** — removed hardcoded `_default_process_nodes()` / `_default_alarm_nodes()`; added `reload_nodes(monitored, alarms)` method for hot-reload without restart
+- **`requirements.txt`** — added `psycopg2-binary`
+
+### opcua-simulator — rewrite with DB-backed behaviors
+
+- **`app/server.py`** — full rewrite:
+  - Reads node definitions from `postgres-opcua` on startup via `load_node_defs()`; falls back to `_default_nodes()` if DB unavailable
+  - `NodeSim` dataclass: `tick(dt, process_values)` implements all 8 behaviors: `sine`, `random_walk`, `random`, `sawtooth`, `trapezoidal`, `step`, `constant`, `threshold`
+  - **Trapezoidal**: `sim_period` = ONE phase duration; full cycle = 4 × period: ramp-up → plateau → ramp-down → off
+  - **Threshold**: alarm logic reads process node values by name (e.g. `temperature`, `pressure`) from `process_values` dict
+  - Hot-reload: re-reads DB config every 15 s in the main loop; updates `sims[nid].cfg` in-place without restarting
+- **`requirements.txt`** — added `psycopg2-binary`
+- **`docker-compose.yml`** — added `POSTGRES_URL` env var to `opcua-simulator`; added `depends_on: postgres-opcua`
+
+### s7-status-ui — NodeConfigPage (new page)
+
+- **`src/pages/nodeconfig/NodeConfigPage.tsx`** — new page: CRUD table of node definitions
+  - `NodeDialog`: fields for name, OPC-UA Node ID, type, unit (MUI Autocomplete freeSolo grouped by category), description, is_active Switch, sim_behavior Select (with hint text), sim_min / sim_max / sim_period TextFields
+  - `ConfirmDelete` dialog
+  - Hot-reload on save/delete: opcua-service `_reload_poller()` called server-side after every mutation
+- **`src/api/opcuaApi.ts`** — added `SensorUnit`, `NodeDef`, `NodeDefCreate`, `NodeDefUpdate` interfaces; added `getSensorUnits()`, `getNodeConfig()`, `createNodeConfig()`, `updateNodeConfig()`, `deleteNodeConfig()`
+- **`src/routes/routes.tsx`** — added `/node-config` route with `SettingsInputComponentIcon`, label "Node Config"
+
+### s7-status-ui — Charts page
+
+- **`src/pages/charts/ChartsPage.tsx`** — new page: measurement + node selector, 4 time-range toggles (10min/1h/8h/24h), Recharts `LineChart` for process data, alarm state summary + step chart for alarms; auto-refreshes every 30 s; last selected Measurement and Node persisted to `localStorage` (`s7ui.charts.measurement`, `s7ui.charts.node`)
+- **`src/api/opcuaApi.ts`** — added `getNodes()` and `getTimeseries()` typed helpers
+- **`src/routes/routes.tsx`** — added `/charts` route with `ShowChartIcon`
+- **`package.json`** — added `recharts ^2`
+
+### s7-status-ui — S7StatusPage rename
+
+- **`src/pages/s7/S7StatusPage.tsx`** — renamed "Process Data" → "Node List" throughout
+
+---
+
+## 2026-03-19 (session 9)
+
+### opcua-service — New microservice (S7-1500 OPC-UA integration)
+
+**New service:** `services/opcua-service/`
+
+- **`app/client.py`** — Async `OPCUAPoller` class using `asyncua 1.1.5`:
+  - Polls configured nodes on a fixed interval (default 500 ms)
+  - Auto-reconnects on failure with per-poll error counter
+  - Exposes `get_status()`, `get_statistics()`, `get_latest()`, `write_value()`, `read_node()`, `browse_nodes()`
+  - Duck-typed `_SubHandler` class (no base class inheritance) — required because `asyncua 1.1.5` removed `SubHandler` and `SubscriptionHandler` is a `Union` type alias, not a base class
+- **`app/settings.py`** — Extends `CommonSettings`; env vars: `OPCUA_ENDPOINT`, `OPCUA_USERNAME`, `OPCUA_PASSWORD`, `OPCUA_SECURITY_MODE`, `POLL_INTERVAL_MS`
+- **`app/main.py`** — FastAPI with `lifespan` context manager: starts/stops `OPCUAPoller` on startup/shutdown
+- **`app/routes/opcua.py`** — JWT-protected endpoints:
+  - `GET /opcua/health` — public health check
+  - `GET /opcua/status` — connection + server state (viewer+)
+  - `GET /opcua/process-data` — latest polled node values (viewer+)
+  - `GET /opcua/statistics` — read/write counts, avg/min/max read times (viewer+)
+  - `GET /opcua/browse-nodes` — browse OPC-UA node tree (viewer+)
+  - `GET /opcua/read-node` — read a single node value (viewer+)
+  - `POST /opcua/write-value` — write a value to a node (operator+)
+- **`Dockerfile`** — same build-context-at-repo-root pattern as other services
+- **`requirements.txt`** — `asyncua==1.1.5`, `cryptography`, `fastapi`, `uvicorn[standard]`
+
+**`docker-compose.yml`** — added `opcua-service` block with all OPC-UA env vars.
+
+**`api-gateway/traefik/dynamic.yml`** — added `opcua` router (`PathPrefix('/opcua')`) + `opcua-service` load-balancer; added `http://localhost:5179` to CORS allowed origins.
+
+---
+
+### s7-status-ui — New frontend (S7-1500 live status dashboard)
+
+**New app:** `frontend/s7-status-ui/` — React 19 + TypeScript + Vite + MUI + Redux on port **5179**.
+
+- **Theme:** Industrial dark — cyan primary `#00bcd4`, deep navy `#0a0f1a` / `#111827`
+- **`src/api/opcuaApi.ts`** — axios instance with `/opcua` base URL; JWT interceptor reads token from `localStorage`
+- **`src/pages/s7/S7StatusPage.tsx`** — Three MUI cards auto-refreshing every 1500 ms via `setInterval` + `Promise.allSettled`:
+  - **ConnectionCard** — endpoint, security mode, server state, namespace count, uptime, consecutive errors
+  - **StatisticsCard** — total/successful/failed reads, subscription updates, avg/min/max read time
+  - **ProcessDataCard** — live values for all monitored nodes with chip-style display
+- **Layout:** `Sidebar` with single nav item "S7-1500 Status" + `DesignServicesIcon`; `Header` titled "S7-1500 Monitor"
+- **`src/pages/SignIn.tsx`** — MUI card login form; navigates to `/s7` on success
+- **`vite.config.ts`** — port 5179, proxy `/auth` → `http://localhost:8001`, `/opcua` → `http://localhost:8006`
+
+---
+
+### sap-b1-adapter-service — Username in query save request body
+
+- **`services/sap-b1-adapter-service/app/routes/queries.py`** — Added `username: Optional[str] = None` to `QueryDefIn` model; both `create_query` and `update_query` handlers now use `body.username or current_user.get("sub")` so the frontend can pass the display username explicitly
+- **`frontend/sap-sync-ui/src/features/queries/queriesSlice.ts`** — Added `username?: string` to `QueryDefIn` interface
+- **`frontend/sap-sync-ui/src/pages/querys/QueryBuilder.tsx`** — Added `username: user?.username` to the save request body
+
+---
+
+### maps-service — `bulk_upsert_partners` INSERT column mismatch fix
+
+- **`services/maps-service/app/database.py`** — Removed `synced_at` from the `INSERT INTO map_partners (...)` column list; the column has `DEFAULT NOW()` so it does not need to be in the VALUES tuple. Fix resolved `psycopg2` error: "INSERT has more target columns than expressions".
+
+---
+
 ## 2026-03-16 (session 8)
 
 ### live-labeling-ui — LabelDesignerPage enhancements (`src/pages/designer/LabelDesignerPage.tsx`)

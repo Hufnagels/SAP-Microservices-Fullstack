@@ -1,5 +1,5 @@
 """
-Auth Service — JWT + bcrypt authentication for the BRD microservice platform.
+Auth Service — JWT + bcrypt authentication for the microservice platform.
 Replaces the demo stub with real PostgreSQL-backed auth.
 """
 import logging

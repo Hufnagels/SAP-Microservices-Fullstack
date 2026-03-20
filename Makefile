@@ -1,4 +1,4 @@
-# ── BRD MicroServices — Makefile ──────────────────────────────────────────────
+# ── MicroServices — Makefile ──────────────────────────────────────────────
 # Usage:
 #   make infra-up       Start infrastructure (MSSQL) — do this first on a new machine
 #   make infra-init     Initialize MSSQL schema (ReportingDB + tables)
@@ -59,6 +59,15 @@ up-binpack:
 up-labeling:
 	$(APP) up --build -d labeling-service
 
+up-opcua:
+	$(APP) up --build -d opcua-service
+
+up-influx:
+	$(APP) up -d influxdb
+
+up-sim:
+	$(APP) --profile sim up --build -d opcua-simulator
+
 down:
 	$(APP) down
 
@@ -78,7 +87,7 @@ reset:
 
 # ── Frontend dev servers ───────────────────────────────────────────────────────
 # Each runs its own Vite dev server. API calls go through http://localhost (Traefik).
-# Ports: sap-sync-ui=5173, sap-map-ui=5174, binpack-ui=5175, admin-ui=5176, live-labeling-ui=5178
+# Ports: sap-sync-ui=5173, sap-map-ui=5174, binpack-ui=5175, admin-ui=5176, live-labeling-ui=5178, s7-status-ui=5179
 # Package manager: pnpm (workspace defined in pnpm-workspace.yaml)
 
 fe-install:
@@ -107,6 +116,9 @@ fe-admin:
 fe-labeling:
 	cd frontend/live-labeling-ui && pnpm dev
 
+fe-s7:
+	cd frontend/s7-status-ui && pnpm dev
+
 # Run services directly (no Docker) — use when Docker daemon is not available
 # PYTHONPATH=../.. makes `shared/` importable the same way the Dockerfile does
 # Ports: auth=8002, sap-b1-adapter=8003
@@ -121,6 +133,9 @@ dev-sap:
 dev-labeling:
 	cd services/labeling-service && VITE_BACKEND_URL=http://localhost:8001 uvicorn app.main:app --reload --port 8001
 
+dev-opcua:
+	cd services/opcua-service && PYTHONPATH=../.. uvicorn app.main:app --reload --port 8006
+
 # ── Observation ───────────────────────────────────────────────────────────────
 
 logs:
@@ -133,5 +148,5 @@ ps:
 	@echo "=== App services ==="
 	$(APP) ps
 
-.PHONY: infra-up infra-down infra-reset infra-init up up-core up-sap up-binpack up-labeling down down-all reset logs ps \
-        fe-install fe-sap fe-sap-dev fe-map fe-binpack fe-binpack-dev fe-admin fe-labeling dev-auth dev-sap dev-labeling
+.PHONY: infra-up infra-down infra-reset infra-init up up-core up-sap up-binpack up-labeling up-opcua up-influx up-sim down down-all reset logs ps \
+        fe-install fe-sap fe-sap-dev fe-map fe-binpack fe-binpack-dev fe-admin fe-labeling fe-s7 dev-auth dev-sap dev-labeling dev-opcua

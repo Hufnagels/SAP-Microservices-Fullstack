@@ -42,9 +42,11 @@
       - [Sync Jobs / Run Sync](#sync-jobs--run-sync)
     - [8.3 sap-map-ui (port 5174)](#83-sap-map-ui-port-5174)
     - [8.4 binpack-ui (port 5175)](#84-binpack-ui-port-5175)
+    - [8.6 s7-status-ui (port 5179)](#86-s7-status-ui-port-5179)
     - [8.5 live-labeling-ui (port 5178)](#85-live-labeling-ui-port-5178)
   - [9. SAP B1 Sync Flow (summary)](#9-sap-b1-sync-flow-summary)
   - [10. Troubleshooting](#10-troubleshooting)
+    - [Renaming the InfluxDB organisation (without wiping data)](#renaming-the-influxdb-organisation-without-wiping-data)
   - [11. Third-Party Sources](#11-third-party-sources)
     - [Infrastructure \& Runtime](#infrastructure--runtime)
     - [Backend (Python)](#backend-python)
@@ -86,6 +88,7 @@ Build a **full-stack enterprise microservice platform** for Production Company t
 │  sap-map-ui    :5174   SAP data on Leaflet map                      │
 │  binpack-ui    :5175   3D bin-packing                               │
 │  live-labeling-ui :5178  Label designer (Konva + ZPL print)         │
+│  s7-status-ui  :5179   S7-1500 OPC-UA live status dashboard         │
 └────────────────────────────┬────────────────────────────────────────┘
                              │  HTTP → http://localhost (Traefik :80)
                              ▼
@@ -103,6 +106,7 @@ auth-service    sap-b1-adapter    labeling-service      binpack-service
 
    Also routed: /files → file-service (PostgreSQL + local storage)
                 /maps  → maps-service
+                /opcua → opcua-service (S7-1500 OPC-UA polling → InfluxDB)
                 /orders /inventory /reporting /sensor  (stub services)
 
 ┌─────────────────────────────────┐
@@ -119,9 +123,12 @@ auth-service    sap-b1-adapter    labeling-service      binpack-service
 │  App stack (docker-compose.yml) │
 │  Traefik, auth-service,         │
 │  postgres-auth, postgres-files, │
+│  postgres-opcua (node defs),    │
 │  sap-b1-adapter-service,        │
 │  file-service, binpack-service, │
 │  labeling-service, maps-service,│
+│  opcua-service, influxdb,       │
+│  opcua-simulator (--profile sim)│
 │  rabbitmq, prometheus, loki,    │
 │  promtail, grafana              │
 └─────────────────────────────────┘
@@ -149,6 +156,8 @@ MicroServices/
 │   ├── binpack-service/           # 3D bin-packing optimizer
 │   ├── labeling-service/          # ZPL print endpoint (CAB SQUIX)
 │   ├── maps-service/              # Map data backend
+│   ├── opcua-service/             # OPC-UA polling for Siemens S7-1500 → InfluxDB timeseries
+│   ├── opcua-simulator/           # asyncua fake S7-1500 PLC (dev/test, --profile sim)
 │   ├── orders-service/            # stub
 │   ├── inventory-service/         # stub
 │   ├── reporting-service/         # stub
@@ -158,7 +167,8 @@ MicroServices/
 │   ├── sap-sync-ui/               # Query Builder + SAP sync jobs
 │   ├── sap-map-ui/                # Leaflet map view of SAP data
 │   ├── binpack-ui/                # 3D bin-pack UI
-│   └── live-labeling-ui/          # Label designer (Konva canvas + ZPL)
+│   ├── live-labeling-ui/          # Label designer (Konva canvas + ZPL)
+│   └── s7-status-ui/              # S7-1500 OPC-UA live status dashboard (:5179)
 ├── infrastructure/
 │   └── mssql/
 │       ├── docker-compose.yml     # MSSQL infra stack
@@ -223,7 +233,10 @@ Frontend tech stack (consistent across all UIs):
 | **MSSQL** (Docker container) | sap-b1-adapter-service writes SAP query results |
 | **SAP B1 Service Layer** | sap-b1-adapter-service pulls data (VPN required) |
 | **CAB SQUIX printer** | labeling-service prints ZPL labels |
-| **PostgreSQL** (per-service, in Docker) | auth-service, file-service internal DBs |
+| **Siemens S7-1500 PLC** | opcua-service polls process data via OPC-UA (port 4840) |
+| **OPC-UA Simulator** | asyncua Docker service replacing the PLC for dev/test (`--profile sim`) |
+| **PostgreSQL** (per-service, in Docker) | auth-service, file-service, opcua-service internal DBs |
+| **InfluxDB 2.7** (in Docker, port 8086) | opcua-service writes timeseries; Grafana reads it |
 
 ---
 
@@ -269,6 +282,20 @@ SAP_B1_SERVICE_LAYER_URL=https://<SAP host ip>:50000/b1s
 SAP_B1_COMPANY_DB=test_DB
 SAP_B1_USERNAME=<sap_username>
 SAP_B1_PASSWORD=<SuperSecret>
+
+# OPC-UA (Siemens S7-1500)
+OPCUA_ENDPOINT=opc.tcp://192.168.0.1:4840
+OPCUA_USERNAME=
+OPCUA_PASSWORD=
+OPCUA_SECURITY_MODE=None
+OPCUA_POLL_INTERVAL_MS=500
+
+# InfluxDB — timeseries storage for OPC-UA data
+INFLUXDB_USER=admin
+INFLUXDB_PASSWORD=adminpassword
+INFLUXDB_TOKEN=my-super-secret-token
+INFLUXDB_ORG=compani
+INFLUXDB_BUCKET=opcua
 
 # MSSQL ReportingDB
 DST_SQL_SERVER=mssql_server,1433
@@ -353,6 +380,9 @@ make up-core       # Start traefik + auth-service + postgres-auth only
 make up-sap        # Start sap-b1-adapter-service only
 make up-binpack    # Start binpack-service only
 make up-labeling   # Start labeling-service only
+make up-opcua      # Start opcua-service only
+make up-influx     # Start InfluxDB only (timeseries DB)
+make up-sim        # Start opcua-simulator (fake S7-1500 PLC for dev/test)
 make down          # Stop app services (data preserved)
 make down-all      # Stop app + infra (data preserved)
 make reset         # FULL WIPE — deletes all volumes, restarts everything
@@ -374,6 +404,7 @@ make fe-map        # Start sap-map-ui dev server (:5174)
 make fe-binpack    # Start binpack-ui dev server (:5175)
 make fe-admin      # Start admin-ui dev server (:5176)
 make fe-labeling   # Start live-labeling-ui dev server (:5178)
+make fe-s7         # Start s7-status-ui dev server (:5179)
 ```
 
 ### Local backend dev (no Docker)
@@ -382,6 +413,7 @@ make fe-labeling   # Start live-labeling-ui dev server (:5178)
 make dev-auth      # Run auth-service with uvicorn on :8002
 make dev-sap       # Run sap-b1-adapter-service with uvicorn on :8003
 make dev-labeling  # Run labeling-service with uvicorn on :8001
+make dev-opcua     # Run opcua-service with uvicorn on :8006
 ```
 
 Use `fe-sap-dev` / `fe-binpack-dev` to point the frontend proxy at local dev servers instead of Docker.
@@ -422,6 +454,7 @@ All production traffic goes through Traefik at `http://localhost`.
 | labeling-service | `http://localhost/labeling/...` | 8000 |
 | binpack-service | `http://localhost/binpack/...` | 8000 |
 | maps-service | `http://localhost/maps/...` | 8000 |
+| opcua-service | `http://localhost/opcua/...` | 8000 |
 
 ### Monitoring
 
@@ -431,6 +464,7 @@ All production traffic goes through Traefik at `http://localhost`.
 | RabbitMQ management | http://localhost:15672 | guest / guest |
 | Prometheus | http://localhost:9090 | — |
 | Grafana | http://localhost:3000 | admin / admin |
+| InfluxDB | http://localhost:8086 | admin / adminpassword |
 
 ---
 
@@ -538,6 +572,79 @@ make fe-binpack
 
 ---
 
+### 8.6 s7-status-ui (port 5179)
+
+**Purpose:** Real-time status dashboard for a Siemens S7-1500 PLC via OPC-UA, with timeseries charts and editable node configuration.
+
+**Start:**
+```bash
+make fe-s7
+# Open: http://localhost:5179
+```
+
+**Login:** Same JWT credentials as other frontends (auth-service).
+
+**Pages:**
+
+| Path | Description |
+|---|---|
+| `/status` | Live OPC-UA connection, statistics, node list (auto-refresh 1.5 s) |
+| `/charts` | Recharts timeseries — process data line chart + alarm state timeline; remembers last selection |
+| `/node-config` | CRUD editor for OPC-UA node definitions (name, Node ID, unit, sim behavior) |
+
+**Node Config (`/node-config`):**
+- Add / edit / delete OPC-UA nodes stored in `postgres-opcua` (`node_definitions` table)
+- Changes hot-reload into `opcua-service` and `opcua-simulator` immediately (no restart needed)
+- **Unit field**: searchable Autocomplete grouped by category (Temperature, Pressure, Flow, Speed, …) — 45+ standard sensor units from `sensor_units` table; freeSolo allows custom input
+- **Sim behavior** fields per node: `sine`, `random_walk`, `random`, `sawtooth`, `trapezoidal`, `step`, `constant`, `threshold`
+  - `sim_period` = duration of ONE phase (trapezoidal: ramp-up → plateau → ramp-down → off, total = 4 × period)
+
+**Charts (`/charts`):**
+- Measurement selector: **Process Data** (line chart, one node at a time) or **Alarms** (state timeline for all alarm nodes)
+- Time range: 10 min / 1 h / 8 h / 24 h
+- Auto-refresh every 30 s; manual Refresh button
+- Last selected Measurement and Node are persisted in `localStorage`
+
+**Theme:** Industrial dark — cyan primary (`#00bcd4`), deep navy background.
+
+**Key env vars for opcua-service:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `OPCUA_ENDPOINT` | `opc.tcp://192.168.0.1:4840` | OPC-UA server URL (PLC or simulator) |
+| `OPCUA_USERNAME` | *(empty)* | OPC-UA user (leave blank for anonymous) |
+| `OPCUA_PASSWORD` | *(empty)* | OPC-UA password |
+| `OPCUA_SECURITY_MODE` | `None` | `None` / `Basic256Sha256` |
+| `OPCUA_POLL_INTERVAL_MS` | `500` | How often to poll nodes (milliseconds) |
+| `POSTGRES_URL` | `postgresql://…@postgres-opcua:5432/opcua_db` | Node definitions DB |
+| `INFLUXDB_URL` | `http://influxdb:8086` | Timeseries storage |
+| `INFLUXDB_TOKEN` | `my-super-secret-token` | InfluxDB auth token |
+| `INFLUXDB_ORG` | `compani` | InfluxDB organisation |
+| `INFLUXDB_BUCKET` | `opcua` | InfluxDB bucket |
+
+**Using the OPC-UA simulator (dev/test — no real PLC needed):**
+
+```bash
+# In .env:
+OPCUA_ENDPOINT=opc.tcp://opcua-simulator:4840
+
+make up-sim      # starts opcua-simulator container (profile=sim)
+make up-opcua    # (re)starts opcua-service pointing at the simulator
+```
+
+The simulator reads node definitions from `postgres-opcua` and hot-reloads config every 15 s.
+
+**Direct DB / InfluxDB access (for debugging):**
+
+| System | Host | Port | DB / Bucket | User | Password |
+|---|---|---|---|---|---|
+| PostgreSQL (node defs) | `localhost` | `5438` | `opcua_db` | `postgres` | `postgres` |
+| InfluxDB | `localhost` | `8086` | bucket: `opcua` | `admin` | `adminpassword` |
+| InfluxDB token | — | — | — | — | `my-super-secret-token` |
+| InfluxDB org | — | — | `compani` | — | — |
+
+---
+
 ### 8.5 live-labeling-ui (port 5178)
 
 **Purpose:** Design print labels visually on a Konva canvas, then send ZPL to a CAB SQUIX printer.
@@ -621,6 +728,57 @@ make fe-labeling
 | Port 80 in use | Another process on :80 | `sudo lsof -i :80` → stop it |
 | Frontend shows old version | Docker has old image | `docker compose up -d --build <service>` |
 | `restart` didn't apply code changes | No volume mount; code baked into image | Use `docker compose up -d --build <service>` |
+| Need to rename InfluxDB org (keep data) | `DOCKER_INFLUXDB_INIT_ORG` only applies on first init | See procedure below |
+| OPC-UA 503 | opcua-service not connected or simulator not running | `make up-sim && make up-opcua`; check `OPCUA_ENDPOINT` in `.env` |
+| Charts show no data | InfluxDB not running or opcua-service not writing | `make up-influx`, check `http://localhost:8086` → bucket `opcua` |
+| Node Config PUT doesn't update sim behavior | Old opcua-service image (Pydantic model missing sim fields) | `docker compose up -d --build opcua-service` |
+| Simulator shows old behavior after node edit | Hot-reload fires every 15 s | Wait up to 15 s, or restart simulator: `docker compose restart opcua-simulator` |
+| `sim_behavior` reverts after Save in UI | Old frontend build (NodeDialog useEffect bug) | Hard-refresh browser (Cmd+Shift+R) or `make fe-s7` |
+
+---
+
+### Renaming the InfluxDB organisation (without wiping data)
+
+`DOCKER_INFLUXDB_INIT_ORG` is a **bootstrap-only** variable — it runs once on the very first container start. Changing it in `.env` or `docker-compose.yml` has no effect on an already-initialised instance. Use the API instead:
+
+```bash
+# 1. Find the org ID
+curl -s http://localhost:8086/api/v2/orgs \
+  -H "Authorization: Token my-super-secret-token" | python3 -m json.tool | grep -E '"id"|"name"'
+
+# 2. Rename it (replace <ORG_ID> with the id from step 1)
+curl -s -X PATCH http://localhost:8086/api/v2/orgs/<ORG_ID> \
+  -H "Authorization: Token my-super-secret-token" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"compani"}'
+```
+
+**Grafana InfluxDB datasource settings** (Connections → Data Sources → InfluxDB-OPC-UA):
+
+| Field | Value |
+|---|---|
+| URL | `http://influxdb:8086` |
+| Query Language | Flux |
+| Organization | `compani` |
+| Default Bucket | `opcua` |
+| Token | `my-super-secret-token` |
+
+> `localhost:8086` will **not** work — Grafana runs inside Docker and must use the service name `influxdb`.
+
+Then update the org name everywhere and restart the affected services:
+
+```bash
+# In .env:
+INFLUXDB_ORG=compani
+
+# In monitoring/grafana/provisioning/datasources/datasources.yml:
+#   organization: compani
+
+# In docker-compose.yml the default is already compani.
+
+docker compose up -d --build opcua-service
+docker compose restart grafana
+```
 
 ---
 

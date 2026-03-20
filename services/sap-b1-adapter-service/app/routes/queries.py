@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.core import connect_sql, fetch_b1_rows, VPNConnectionError
+from app.core import connect_sql, fetch_b1_rows, VPNConnectionError, check_vpn_connection
 from app.core.sql_preprocessor import preprocess_sql
 from app import security
 
@@ -24,6 +24,7 @@ class QueryDefIn(BaseModel):
     sql_original: str
     service_name: Optional[str] = None
     is_active: bool = True
+    username: Optional[str] = None
 
 
 class PreviewReq(BaseModel):
@@ -47,19 +48,24 @@ def list_queries(
         security.require_jwt(["superadmin", "admin", "operator", "viewer"])
     ),
 ):
-    conn = connect_sql()
+    conn = None
     try:
+        check_vpn_connection()
+        conn = connect_sql()
         cur = conn.cursor()
         cur.execute(
             "SELECT * FROM dbo.wrk_QueryDef WHERE is_active = 1 ORDER BY query_id DESC"
         )
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
+    except VPNConnectionError as e:
+        raise HTTPException(status_code=503, detail=e.to_json())
     except Exception:
         log.exception("Failed to list queries")
         raise HTTPException(status_code=500, detail="Database error")
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 # ── Create ───────────────────────────────────────────────────────────────────
@@ -76,10 +82,12 @@ def create_query(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"SQL preprocessing failed: {e}")
 
-    conn = connect_sql()
+    conn = None
     try:
+        check_vpn_connection()
+        conn = connect_sql()
         cur = conn.cursor()
-        username = current_user.get("sub")
+        username = body.username or current_user.get("sub")
         cur.execute(
             """
             INSERT INTO dbo.wrk_QueryDef
@@ -107,12 +115,16 @@ def create_query(
             "sql_b1_comp_base_query": clean_sql,
             "sql_b1_comp_extra_options": extra_opts,
         }
+    except VPNConnectionError as e:
+        raise HTTPException(status_code=503, detail=e.to_json())
     except Exception:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         log.exception("Failed to create query")
         raise HTTPException(status_code=500, detail="Database error")
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 # ── Update ───────────────────────────────────────────────────────────────────
@@ -130,10 +142,12 @@ def update_query(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"SQL preprocessing failed: {e}")
 
-    conn = connect_sql()
+    conn = None
     try:
+        check_vpn_connection()
+        conn = connect_sql()
         cur = conn.cursor()
-        username = current_user.get("sub")
+        username = body.username or current_user.get("sub")
         cur.execute(
             """
             UPDATE dbo.wrk_QueryDef
@@ -162,12 +176,16 @@ def update_query(
         )
         conn.commit()
         return {"query_id": query_id, "sql_b1_comp_base_query": clean_sql}
+    except VPNConnectionError as e:
+        raise HTTPException(status_code=503, detail=e.to_json())
     except Exception:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         log.exception("Failed to update query")
         raise HTTPException(status_code=500, detail="Database error")
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 # ── Delete (soft) ────────────────────────────────────────────────────────────
@@ -179,8 +197,10 @@ def delete_query(
         security.require_jwt(["superadmin", "admin"])
     ),
 ):
-    conn = connect_sql()
+    conn = None
     try:
+        check_vpn_connection()
+        conn = connect_sql()
         cur = conn.cursor()
         cur.execute(
             "UPDATE dbo.wrk_QueryDef SET is_active = 0 WHERE query_id = ?",
@@ -188,12 +208,16 @@ def delete_query(
         )
         conn.commit()
         return {"deleted": query_id}
+    except VPNConnectionError as e:
+        raise HTTPException(status_code=503, detail=e.to_json())
     except Exception:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         log.exception("Failed to delete query")
         raise HTTPException(status_code=500, detail="Database error")
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 # ── Preview (no MSSQL write) ──────────────────────────────────────────────────

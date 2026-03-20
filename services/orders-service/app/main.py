@@ -13,8 +13,8 @@ def health():
 @app.get("/orders")
 def list_orders():
     return [
-        {"id": 1001, "customer": "ACME Kft.", "status": "open"},
-        {"id": 1002, "customer": "BRD Papír Kft.", "status": "released"},
+        {"id": 1001, "customer": "ACME Ltd.", "status": "open"},
+        {"id": 1002, "customer": "Compani Ltd.", "status": "released"},
     ]
 
 app.include_router(metrics_router(settings.app_name))

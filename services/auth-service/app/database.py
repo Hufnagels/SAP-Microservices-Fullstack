@@ -190,6 +190,7 @@ def _create_services_table():
                     ("reporting-service",    "ReportingService",   "Reporting and analytics service (stub)",                    "http://reporting-service:8000",    8000, "make up",          "/reporting"),
                     ("sensor-ingest-service","SensorIngestService","Sensor data ingest and event pipeline (stub)",             "http://sensor-ingest-service:8000",8000, "make up",          "/sensor"),
                     ("maps-service",         "MapsService",        "Geospatial / Leaflet map data service (stub)",              "http://maps-service:8000",         8000, "make up",          "/maps"),
+                    ("opcua-service",        "OpcuaService",       "Siemens S7-1500 OPC-UA polling, InfluxDB timeseries persistence", "http://opcua-service:8000",       8000, "make up-opcua",    "/opcua"),
                 ]
                 cur.executemany(
                     """INSERT INTO services

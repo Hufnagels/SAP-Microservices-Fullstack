@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+asyncua==1.1.5
+cryptography
+python-jose[cryptography]
+prometheus-client
+influxdb-client[async]
+psycopg2-binary

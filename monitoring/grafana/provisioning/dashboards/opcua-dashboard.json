@@ -1,0 +1,146 @@
+{
+  "id": null,
+  "uid": "opcua-s7-1500",
+  "title": "OPC-UA — S7-1500",
+  "description": "Real-time and historical data from Siemens S7-1500 via OPC-UA",
+  "tags": ["opcua", "s7-1500", "influxdb"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Temperature",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 9 },
+      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": { "lineWidth": 2, "fillOpacity": 8, "spanNulls": true }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"opcua\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"process_data\")\n  |> filter(fn: (r) => r.node_name == \"temperature\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Working Speed",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 9 },
+      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "velocityms",
+          "custom": { "lineWidth": 2, "fillOpacity": 8, "spanNulls": true }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"opcua\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"process_data\")\n  |> filter(fn: (r) => r.node_name == \"working_speed\")\n  |> filter(fn: (r) => r._field == \"value\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Active Alarms (last 5 min)",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 18, "w": 6, "h": 7 },
+      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"opcua\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"alarms\")\n  |> filter(fn: (r) => r._field == \"active\")\n  |> last()\n  |> filter(fn: (r) => r._value == 1)\n  |> count(column: \"_value\")"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Alarms — State Timeline",
+      "type": "state-timeline",
+      "gridPos": { "x": 0, "y": 18, "w": 18, "h": 7 },
+      "datasource": { "type": "influxdb", "uid": "${datasource}" },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 0, "fillOpacity": 70 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1 }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "OK",    "color": "green" },
+                "1": { "text": "ALARM", "color": "red" }
+              }
+            }
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"opcua\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"alarms\")\n  |> filter(fn: (r) => r._field == \"active\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> map(fn: (r) => ({ r with _value: int(v: r._value) }))"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "pluginId": "influxdb",
+        "query": "influxdb",
+        "regex": "InfluxDB-OPC-UA",
+        "label": "InfluxDB",
+        "hide": 2,
+        "refresh": 1,
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  }
+}

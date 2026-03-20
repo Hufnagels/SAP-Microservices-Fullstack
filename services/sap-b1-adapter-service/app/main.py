@@ -12,6 +12,7 @@ from shared.python_common.observability import metrics_router
 from .settings import Settings
 from . import security
 from .routes import sync_router, jobs_router, queries_router
+from .core import migrate_schema
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -43,4 +44,5 @@ def on_startup():
         jwt_algo=settings.jwt_algo,
         api_keys_json=settings.api_keys_json,
     )
+    migrate_schema()
     log.info("SAP B1 adapter started")

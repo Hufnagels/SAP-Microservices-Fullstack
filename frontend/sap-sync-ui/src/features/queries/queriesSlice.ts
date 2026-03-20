@@ -20,6 +20,7 @@ interface QueryDefIn {
   description?: string;
   sql_original: string;
   service_name?: string | null;
+  username?: string;
 }
 
 interface QueriesState {

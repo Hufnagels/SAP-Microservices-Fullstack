@@ -9,3 +9,15 @@ datasources:
     type: loki
     access: proxy
     url: http://loki:3100
+
+  - name: InfluxDB-OPC-UA
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      version: Flux
+      organization: compani
+      defaultBucket: opcua
+      tlsSkipVerify: true
+    secureJsonData:
+      token: my-super-secret-token

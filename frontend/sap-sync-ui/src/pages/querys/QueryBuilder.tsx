@@ -113,6 +113,7 @@ export default function QueryBuilder() {
         description,
         sql_original: sqlOrig,
         service_name: serviceName || null,
+        username:     user?.username,
       };
       let result: { sql_b1_comp_base_query?: string; sql_b1_comp_extra_options?: string };
       if (editId) {

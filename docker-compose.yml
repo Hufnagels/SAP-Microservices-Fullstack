@@ -192,6 +192,73 @@ services:
       postgres-maps:
         condition: service_healthy
 
+  # ── InfluxDB — timeseries storage for OPC-UA data ────────────────────────────
+  influxdb:
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USER:-admin}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD:-adminpassword}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG:-compani}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:-opcua}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:-my-super-secret-token}
+    volumes:
+      - ./data/influxdb:/var/lib/influxdb2
+
+  # ── OPC-UA Simulator — dev/test stand-in for a real S7-1500 PLC ──────────────
+  # Start with: docker compose --profile sim up -d opcua-simulator
+  # Set OPCUA_ENDPOINT=opc.tcp://opcua-simulator:4840 in .env to use it.
+  opcua-simulator:
+    build:
+      context: services/opcua-simulator
+      dockerfile: Dockerfile
+    environment:
+      SIM_ENDPOINT: opc.tcp://0.0.0.0:4840
+      SIM_INTERVAL_MS: ${SIM_INTERVAL_MS:-500}
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres-opcua:5432/opcua_db
+    depends_on:
+      - postgres-opcua
+    profiles: ["sim"]
+
+  postgres-opcua:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: opcua_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - postgres_opcua_data:/var/lib/postgresql/data
+    ports:
+      - "5438:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  opcua-service:
+    build:
+      context: .
+      dockerfile: services/opcua-service/Dockerfile
+    environment:
+      APP_NAME: opcua-service
+      OPCUA_ENDPOINT: ${OPCUA_ENDPOINT:-opc.tcp://192.168.0.1:4840}
+      OPCUA_USERNAME: ${OPCUA_USERNAME:-}
+      OPCUA_PASSWORD: ${OPCUA_PASSWORD:-}
+      OPCUA_SECURITY_MODE: ${OPCUA_SECURITY_MODE:-None}
+      POLL_INTERVAL_MS: ${OPCUA_POLL_INTERVAL_MS:-500}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-256-bits-long}
+      INFLUXDB_URL: ${INFLUXDB_URL:-http://influxdb:8086}
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-my-super-secret-token}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-compani}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-opcua}
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres-opcua:5432/opcua_db
+    depends_on:
+      - influxdb
+      - postgres-opcua
+
   binpack-service:
     build:
       context: .
@@ -269,6 +336,10 @@ services:
     depends_on:
       - prometheus
       - loki
+      - influxdb
+
+volumes:
+  postgres_opcua_data:
 
 networks:
   # db_net is owned by the infrastructure stack (infrastructure/mssql/docker-compose.yml).
