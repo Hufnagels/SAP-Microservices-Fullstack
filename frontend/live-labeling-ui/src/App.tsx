@@ -13,6 +13,7 @@ import LabelDesignerPage from './pages/designer/LabelDesignerPage';
 import { store } from './app/store';
 import type { RootState, AppDispatch } from './app/store';
 import { fetchCurrentUser, signOut } from './features/auth/authSlice';
+import SessionGuard from './components/common/SessionGuard';
 
 // Auto sign-out on 401
 axios.interceptors.response.use(
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/designer" replace />} />
         </Routes>
       </BrowserRouter>
+      {token && <SessionGuard />}
       <ToastContainer position="bottom-right" autoClose={4000} />
     </ThemeProvider>
   );

@@ -55,6 +55,9 @@ export default function SignIn() {
       {/* Right panel: login form */}
       <Box sx={{ width: { xs: '100%', sm: '420px' }, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: 5, py: 6, bgcolor: 'background.default', backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.05) 25%, transparent 25%), linear-gradient(225deg, rgba(255,255,255,0.05) 25%, transparent 25%)' }}>
         <Box sx={{ width: '100%', maxWidth: 340 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <img src="/app-icon.jpg" alt="App icon" style={{ width: 300, height: 300, borderRadius: 24, objectFit: 'cover' }} />
+          </Box>
           <Typography variant="h5" fontWeight={700} color="primary" gutterBottom>Welcome back</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Sign in to your account to continue.</Typography>
 

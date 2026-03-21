@@ -12,6 +12,7 @@ import MainLayout from './components/layout/MainLayout';
 import { store } from './app/store';
 import type { RootState, AppDispatch } from './app/store';
 import { fetchCurrentUser, signOut } from './features/auth/authSlice';
+import SessionGuard from './components/common/SessionGuard';
 
 // Global 401 interceptor
 axios.interceptors.response.use(
@@ -63,6 +64,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      {token && <SessionGuard />}
       <ToastContainer position="bottom-right" autoClose={4000} />
     </ThemeProvider>
   );

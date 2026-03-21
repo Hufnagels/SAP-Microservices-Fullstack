@@ -66,6 +66,11 @@ def decode_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+def get_current_user(creds: HTTPAuthorizationCredentials = Depends(_bearer)) -> dict:
+    """FastAPI dependency: validates Bearer JWT and returns payload (no role check)."""
+    return decode_token(creds.credentials)
+
+
 def require_roles(roles: list[str]):
     """FastAPI dependency: validates Bearer JWT and checks role membership."""
     def _dep(creds: HTTPAuthorizationCredentials = Depends(_bearer)):

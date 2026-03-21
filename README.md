@@ -46,6 +46,7 @@
     - [8.5 live-labeling-ui (port 5178)](#85-live-labeling-ui-port-5178)
   - [9. SAP B1 Sync Flow (summary)](#9-sap-b1-sync-flow-summary)
   - [10. Troubleshooting](#10-troubleshooting)
+  - [10.1 Session Guard (idle timeout)](#101-session-guard-idle-timeout)
     - [Renaming the InfluxDB organisation (without wiping data)](#renaming-the-influxdb-organisation-without-wiping-data)
   - [11. Third-Party Sources](#11-third-party-sources)
     - [Infrastructure \& Runtime](#infrastructure--runtime)
@@ -558,6 +559,8 @@ make fe-map
 # Open: http://localhost:5174
 ```
 
+> "My Account" has been removed from this UI — profile management is handled in admin-ui.
+
 ---
 
 ### 8.4 binpack-ui (port 5175)
@@ -680,6 +683,35 @@ make fe-labeling
 
 ---
 
+## 8.7 Session Guard — idle timeout (all UIs)
+
+All six frontends (`admin-ui`, `sap-sync-ui`, `sap-map-ui`, `binpack-ui`, `s7-status-ui`, `live-labeling-ui`) include a **SessionGuard** component that detects user inactivity and prompts before the session expires.
+
+**How it works:**
+
+| Event | Description |
+|---|---|
+| User interacts (mouse / keyboard / scroll / touch) | Idle countdown resets to 15 minutes |
+| 15 minutes of inactivity | Dialog appears: **Stay logged in** / **Exit** |
+| Stay logged in | `POST /auth/refresh` → new 8 h JWT issued; countdown resets |
+| Exit | `signOut` → token cleared → redirect to sign-in |
+
+**Backend endpoint:**
+
+```
+POST /auth/refresh
+Authorization: Bearer <current-token>
+→ 200 { access_token, token_type, role }   (token must still be valid)
+→ 401 if token already expired             (frontend then forces signOut)
+```
+
+**To change the idle timeout** (currently 15 min), edit `IDLE_MS` in each UI's:
+```
+src/components/common/SessionGuard.tsx
+```
+
+---
+
 ## 9. SAP B1 Sync Flow (summary)
 
 ```
@@ -734,6 +766,16 @@ make fe-labeling
 | Node Config PUT doesn't update sim behavior | Old opcua-service image (Pydantic model missing sim fields) | `docker compose up -d --build opcua-service` |
 | Simulator shows old behavior after node edit | Hot-reload fires every 15 s | Wait up to 15 s, or restart simulator: `docker compose restart opcua-simulator` |
 | `sim_behavior` reverts after Save in UI | Old frontend build (NodeDialog useEffect bug) | Hard-refresh browser (Cmd+Shift+R) or `make fe-s7` |
+
+---
+
+### 10.1 Session Guard (idle timeout)
+
+| Symptom | Fix |
+|---|---|
+| Dialog never appears | Check that `token` is in Redux state (user is logged in); confirm `IDLE_MS` value in `SessionGuard.tsx` |
+| "Stay logged in" → immediate sign-out | Token already expired; `/auth/refresh` returns 401 → forced sign-out by design |
+| Dialog appears too frequently | Increase `IDLE_MS` in `src/components/common/SessionGuard.tsx` |
 
 ---
 

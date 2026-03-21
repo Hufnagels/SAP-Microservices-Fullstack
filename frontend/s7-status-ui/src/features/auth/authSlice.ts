@@ -53,6 +53,21 @@ export const fetchCurrentUser = createAsyncThunk(
   }
 );
 
+export const renewToken = createAsyncThunk(
+  'auth/renewToken',
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+    try {
+      const response = await axios.post('/auth/refresh', {}, {
+        headers: { Authorization: `Bearer ${state.auth.token}` },
+      });
+      return response.data as { access_token: string };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.detail || 'Token renewal failed');
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -82,6 +97,10 @@ const authSlice = createSlice({
           s.token = null;
           localStorage.removeItem('token');
         }
+      })
+      .addCase(renewToken.fulfilled, (s, a) => {
+        s.token = a.payload.access_token;
+        localStorage.setItem('token', a.payload.access_token);
       });
   },
 });

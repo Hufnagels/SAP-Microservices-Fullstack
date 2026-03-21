@@ -4,6 +4,37 @@ All notable changes to the MicroServices monorepo are documented here.
 
 ---
 
+## 2026-03-20 (session 12)
+
+### auth-service — `POST /auth/refresh` endpoint
+
+- **`app/security.py`** — added `get_current_user` FastAPI dependency (validates Bearer JWT, returns payload, no role check)
+- **`app/routes/auth.py`** — added `POST /auth/refresh`: validates current token, issues fresh 8 h JWT with same `sub`/`role`/`service_roles`; returns `TokenResponse`; returns 401 if token is already expired
+
+### All frontends — SessionGuard (idle timeout)
+
+Implemented on all 6 UIs: `admin-ui`, `sap-sync-ui`, `sap-map-ui`, `binpack-ui`, `s7-status-ui`, `live-labeling-ui`.
+
+- **`src/features/auth/authSlice.ts`** (each UI) — added `renewToken` async thunk (`POST /auth/refresh`); `renewToken.fulfilled` stores new token in Redux + localStorage
+- **`src/components/common/SessionGuard.tsx`** (new, each UI) — listens for `mousemove`, `click`, `keydown`, `scroll`, `touchstart`; after **15 minutes** of inactivity shows a MUI Dialog:
+  - **Stay logged in** → `dispatch(renewToken())` → fresh token; if renewal fails (expired) → forced `signOut`
+  - **Exit** → `dispatch(signOut())`
+- **`src/App.tsx`** (each UI) — renders `{token && <SessionGuard />}` outside `<BrowserRouter>`
+
+### sap-map-ui — removed "My Account"
+
+- **`src/components/layout/Header.tsx`** — removed "My Account" `<MenuItem>` from avatar dropdown menu
+- **`src/routes/routes.tsx`** — removed `/account` route entry, removed `UserAccount` and `PersonIcon` imports
+
+### README.md
+
+- Added section **8.7 Session Guard** (idle timeout behaviour, backend endpoint, how to change timeout)
+- Added **10.1 Session Guard** troubleshooting table
+- Added note to sap-map-ui section: "My Account" removed
+- Added Grafana InfluxDB datasource correct-values table
+
+---
+
 ## 2026-03-20 (session 11)
 
 ### opcua-service — node-config CRUD bug fixes

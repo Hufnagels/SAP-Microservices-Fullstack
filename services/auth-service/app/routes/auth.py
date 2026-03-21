@@ -91,6 +91,13 @@ def login(req: LoginRequest):
     return TokenResponse(access_token=token, role=role)
 
 
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(payload: dict = Depends(security.get_current_user)):
+    """Issue a fresh token for the currently authenticated user (token must still be valid)."""
+    token = security.create_token(payload["sub"], payload["role"], service_roles=payload.get("service_roles", {}))
+    return TokenResponse(access_token=token, role=payload["role"])
+
+
 @router.get("/me")
 def me(payload: dict = Depends(security.require_roles(["superadmin", "admin", "operator", "viewer"]))):
     user = get_user_by_username(payload["sub"])

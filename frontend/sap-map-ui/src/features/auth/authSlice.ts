@@ -100,6 +100,21 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+export const renewToken = createAsyncThunk(
+  'auth/renewToken',
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+    try {
+      const response = await axios.post(`${VITE_APP_API_URL}/auth/refresh`, {}, {
+        headers: { Authorization: `Bearer ${state.auth.token}` },
+      });
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.detail || 'Token renewal failed');
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -143,6 +158,10 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.user = action.payload;
+      })
+      .addCase(renewToken.fulfilled, (state, action) => {
+        state.token = action.payload.access_token;
+        localStorage.setItem('token', action.payload.access_token);
       });
   },
 });

@@ -81,6 +81,9 @@ export default function SignIn() {
         }}
       >
         <Box sx={{ width: '100%', maxWidth: 340 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <img src="/app-icon.jpg" alt="App icon" style={{ width: 300, height: 300, borderRadius: 24, objectFit: 'cover' }} />
+          </Box>
           <Typography variant="h5" fontWeight={700} color="primary" gutterBottom>
             Welcome back
           </Typography>

@@ -11,6 +11,7 @@ import { routes, flattenRoutes } from './routes/routes';
 import { store } from './app/store';
 import type { RootState, AppDispatch } from './app/store';
 import { fetchCurrentUser, signOut } from './features/auth/authSlice';
+import SessionGuard from './components/common/SessionGuard';
 
 axios.interceptors.response.use(
   (res) => res,
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      {token && <SessionGuard />}
       <ToastContainer position="bottom-right" autoClose={4000} />
     </ThemeProvider>
   );
