@@ -36,7 +36,7 @@ wait_healthy() {
 
 # ── Step 1: Databases ──────────────────────────────────────────────────────────
 step "Starting PostgreSQL databases..."
-docker compose up -d postgres-auth postgres-files postgres postgres-maps postgres-labeling
+docker compose up -d postgres-auth postgres-files postgres postgres-maps postgres-labeling postgres-opcua
 wait_healthy "PostgreSQL instances" 8
 ok "Databases up"
 
@@ -97,10 +97,12 @@ echo -e "  Grafana:             ${CYAN}http://localhost:3000${NC}"
 echo -e "  InfluxDB:            ${CYAN}http://localhost:8086${NC}"
 echo ""
 echo -e "  Frontend dev servers (run separately):"
-echo -e "    SAP Sync UI:       ${CYAN}make fe-sap   ${NC} → http://localhost:5173"
-echo -e "    S7 Status UI:      ${CYAN}make fe-s7    ${NC} → http://localhost:5179"
-echo -e "    Admin UI:          ${CYAN}make fe-admin ${NC} → http://localhost:5176"
-echo -e "    Binpack UI:        ${CYAN}make fe-binpack${NC} → http://localhost:5175"
+echo -e "    SAP Sync UI:       ${CYAN}make fe-sap      ${NC} → http://localhost:5173"
+echo -e "    SAP Map UI:        ${CYAN}make fe-map      ${NC} → http://localhost:5174"
+echo -e "    Binpack UI:        ${CYAN}make fe-binpack  ${NC} → http://localhost:5175"
+echo -e "    Admin UI:          ${CYAN}make fe-admin    ${NC} → http://localhost:5176"
+echo -e "    Live Labeling UI:  ${CYAN}make fe-labeling ${NC} → http://localhost:5178"
+echo -e "    S7 Status UI:      ${CYAN}make fe-s7       ${NC} → http://localhost:5179"
 echo ""
 echo -e "  Status:              ${CYAN}make ps${NC}"
 echo -e "  Logs:                ${CYAN}make logs${NC}"

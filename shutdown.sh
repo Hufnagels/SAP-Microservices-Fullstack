@@ -27,6 +27,25 @@ step() { echo -e "\n${CYAN}▶ $1${NC}"; }
 ok()   { echo -e "${GREEN}✓ $1${NC}"; }
 info() { echo -e "${YELLOW}  $1${NC}"; }
 
+# ── Step 0: Frontend dev servers ──────────────────────────────────────────
+step "Stopping frontend dev servers (Vite)..."
+FE_PORTS=(5173 5174 5175 5176 5178 5179)
+FE_NAMES=("sap-sync-ui" "sap-map-ui" "binpack-ui" "admin-ui" "live-labeling-ui" "s7-status-ui")
+KILLED=0
+for i in "${!FE_PORTS[@]}"; do
+  port="${FE_PORTS[$i]}"
+  name="${FE_NAMES[$i]}"
+  pid=$(lsof -ti tcp:"$port" 2>/dev/null || true)
+  if [[ -n "$pid" ]]; then
+    kill "$pid" 2>/dev/null && info "Stopped $name (:$port, pid $pid)" && ((KILLED++)) || true
+  fi
+done
+if [[ $KILLED -eq 0 ]]; then
+  info "No frontend dev servers were running"
+else
+  ok "$KILLED frontend dev server(s) stopped"
+fi
+
 # ── Step 1: OPC-UA simulator (if running) ─────────────────────────────────
 if $STOP_SIM; then
   step "Stopping OPC-UA simulator..."
@@ -68,7 +87,7 @@ ok "Traefik stopped"
 
 # ── Step 6: Databases ──────────────────────────────────────────────────────
 step "Stopping PostgreSQL databases..."
-docker compose stop postgres-auth postgres-files postgres postgres-maps postgres-labeling 2>/dev/null || true
+docker compose stop postgres-auth postgres-files postgres postgres-maps postgres-labeling postgres-opcua 2>/dev/null || true
 ok "Databases stopped"
 
 # ── Step 7: MSSQL infrastructure (optional) ───────────────────────────────
