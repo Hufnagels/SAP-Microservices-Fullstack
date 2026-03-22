@@ -37,8 +37,12 @@ async function downloadExcel(sqlCode: string, logToJobs: boolean) {
     sql_code: sqlCode,
     log_to_jobs: logToJobs,
   });
-  const rows = res.data;
+  let rows = res.data;
   if (!rows.length) { toast.warn('No rows returned'); return 0; }
+  // Add sequential id column if the result has none
+  if (!('id' in rows[0])) {
+    rows = rows.map((r, i) => ({ id: i + 1, ...r }));
+  }
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sqlCode.slice(0, 31));
@@ -66,10 +70,11 @@ export default function Sync() {
     ? allQueries.filter((q) => canAccessService(user, q.service_name, permissions))
     : [];
 
-  const [sqlCode,  setSqlCode]  = useState('');
-  const [dstTable, setDstTable] = useState('');
-  const [loadMode, setLoadMode] = useState<'replace' | 'append'>('replace');
-  const [busy,     setBusy]     = useState(false);
+  const [sqlCode,          setSqlCode]          = useState('');
+  const [dstTable,         setDstTable]         = useState('');
+  const [tableDescription, setTableDescription] = useState('');
+  const [loadMode,         setLoadMode]         = useState<'replace' | 'append'>('replace');
+  const [busy,             setBusy]             = useState(false);
 
   const noTarget = !dstTable.trim();
 
@@ -82,6 +87,7 @@ export default function Sync() {
     if (!selected) return;
     setSqlCode(selected.query_name);
     setDstTable(selected.base_table ?? '');
+    setTableDescription((selected as any).table_description ?? '');
   };
 
   const handleRun = async () => {
@@ -140,6 +146,7 @@ export default function Sync() {
           value={sqlCode}
           onChange={(e) => setSqlCode(e.target.value)}
           fullWidth
+          disabled
         />
         <TextField
           label="Target table"
@@ -147,7 +154,13 @@ export default function Sync() {
           onChange={(e) => setDstTable(e.target.value)}
           fullWidth
           placeholder="EXCEL"
-          helperText={noTarget ? 'Empty = Excel export only (logged as EXCEL in job history)' : undefined}
+          helperText={
+            tableDescription
+              ? tableDescription
+              : noTarget
+              ? 'Empty = Excel export only (logged as EXCEL in job history)'
+              : undefined
+          }
         />
         {!noTarget && (
           <FormControl fullWidth>

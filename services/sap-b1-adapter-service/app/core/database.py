@@ -228,6 +228,16 @@ def insert_rows(cur, schema: str, table: str, col_names: list, rows: list):
     cur.executemany(sql, rows)
 
 
+def _get_max_id(cur, schema: str, table: str) -> int:
+    """Return MAX(id) from table, or 0 if table doesn't exist / is empty."""
+    try:
+        cur.execute(f"SELECT MAX(id) FROM [{schema}].[{table}]")
+        val = cur.fetchone()[0]
+        return val if val is not None else 0
+    except Exception:
+        return 0
+
+
 def write_to_sql_server(
     rows: list[dict],
     table: str,
@@ -235,23 +245,34 @@ def write_to_sql_server(
     load_mode: str,
 ):
     """
-    Write rows to SQL Server table
+    Write rows to SQL Server table.
+    If the result set has no 'id' column, a sequential id is injected
+    (append mode continues from the current MAX(id) in the target table).
     """
     if not rows:
         return
 
-    # Column order from first row (already remapped / decoded)
     col_names = list(rows[0].keys())
-
-    # Matrix for pyodbc executemany
-    rows_matrix = [
-        tuple(coerce_value(r.get(col)) for col in col_names)
-        for r in rows
-    ]
+    has_id = any(k.lower() == "id" for k in col_names)
 
     conn = connect_sql()
     try:
         cur = conn.cursor()
+
+        # Inject sequential id when query result has none
+        if not has_id:
+            if load_mode == "append":
+                start = _get_max_id(cur, schema, table) + 1
+            else:
+                start = 1
+            rows = [{"id": start + i, **r} for i, r in enumerate(rows)]
+            col_names = list(rows[0].keys())
+
+        # Matrix for pyodbc executemany
+        rows_matrix = [
+            tuple(coerce_value(r.get(col)) for col in col_names)
+            for r in rows
+        ]
 
         # Infer SQL types from first row
         col_types = [infer_sql_type(v) for v in rows_matrix[0]]
@@ -319,6 +340,45 @@ def migrate_schema():
                 _add_column_if_missing(cur, "wrk_QueryDef", col, col_type)
             for col, col_type in _jobs_cols:
                 _add_column_if_missing(cur, "logs_SyncJobs", col, col_type)
+
+            # Ensure base_table is nullable (may have been created NOT NULL)
+            cur.execute("""
+                IF EXISTS (
+                    SELECT 1 FROM sys.columns
+                    WHERE object_id = OBJECT_ID('dbo.wrk_QueryDef')
+                      AND name = 'base_table'
+                      AND is_nullable = 0
+                )
+                ALTER TABLE dbo.wrk_QueryDef ALTER COLUMN base_table NVARCHAR(255) NULL
+            """)
+            # Normalize empty base_table → NULL (required for FK)
+            cur.execute(
+                "UPDATE dbo.wrk_QueryDef SET base_table = NULL WHERE base_table = ''"
+            )
+
+            # UNIQUE constraint on wrk_TableDesc.table_name (prerequisite for FK)
+            cur.execute("""
+                IF NOT EXISTS (
+                    SELECT 1 FROM sys.indexes
+                    WHERE object_id = OBJECT_ID('dbo.wrk_TableDesc')
+                      AND name = 'UQ_wrk_TableDesc_table_name'
+                )
+                ALTER TABLE dbo.wrk_TableDesc
+                    ADD CONSTRAINT UQ_wrk_TableDesc_table_name UNIQUE (table_name)
+            """)
+
+            # FK: wrk_QueryDef.base_table → wrk_TableDesc.table_name
+            cur.execute("""
+                IF NOT EXISTS (
+                    SELECT 1 FROM sys.foreign_keys
+                    WHERE name = 'FK_wrk_QueryDef_base_table'
+                )
+                ALTER TABLE dbo.wrk_QueryDef
+                    ADD CONSTRAINT FK_wrk_QueryDef_base_table
+                    FOREIGN KEY (base_table)
+                    REFERENCES dbo.wrk_TableDesc (table_name)
+            """)
+
             conn.commit()
             logger.info("Schema migration completed")
         except Exception:

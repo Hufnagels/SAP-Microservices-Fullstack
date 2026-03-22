@@ -33,6 +33,25 @@ class PreviewReq(BaseModel):
     log_to_jobs: bool = False   # if True, write an EXCEL row to logs_SyncJobs
 
 
+def _upsert_table_desc(cur, dst_table: str, description: str, username: str) -> None:
+    """MERGE into wrk_TableDesc. Skipped when dst_table is empty or 'EXCEL'."""
+    if not dst_table or dst_table.strip().upper() == "EXCEL":
+        return
+    cur.execute(
+        """
+        MERGE dbo.wrk_TableDesc AS t
+        USING (SELECT ? AS table_name, ? AS description, ? AS owner) AS s
+            ON t.table_name = s.table_name
+        WHEN MATCHED THEN
+            UPDATE SET description = s.description, owner = s.owner
+        WHEN NOT MATCHED THEN
+            INSERT (table_name, description, owner, is_active)
+            VALUES (s.table_name, s.description, s.owner, 1);
+        """,
+        (dst_table.strip(), description or "", username),
+    )
+
+
 def _preprocess(sql_original: str) -> tuple[str, str]:
     """Run sql_preprocessor and return (clean_sql, extra_opts_json)."""
     clean_sql, calc_cols = preprocess_sql(sql_original)
@@ -54,7 +73,13 @@ def list_queries(
         conn = connect_sql()
         cur = conn.cursor()
         cur.execute(
-            "SELECT * FROM dbo.wrk_QueryDef WHERE is_active = 1 ORDER BY query_id DESC"
+            """
+            SELECT q.*, td.description AS table_description
+            FROM dbo.wrk_QueryDef q
+            LEFT JOIN dbo.wrk_TableDesc td ON td.table_name = q.base_table
+            WHERE q.is_active = 1
+            ORDER BY q.query_id DESC
+            """
         )
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
@@ -99,7 +124,7 @@ def create_query(
             """,
             (
                 body.query_name,
-                body.dst_table or "",
+                body.dst_table or None,
                 body.description,
                 body.sql_original,
                 clean_sql,
@@ -109,6 +134,7 @@ def create_query(
             ),
         )
         query_id = cur.fetchone()[0]
+        _upsert_table_desc(cur, body.dst_table or "", body.description or "", username)
         conn.commit()
         return {
             "query_id": query_id,
@@ -164,7 +190,7 @@ def update_query(
             """,
             (
                 body.query_name,
-                body.dst_table or "",
+                body.dst_table or None,
                 body.description,
                 body.sql_original,
                 clean_sql,
@@ -174,6 +200,7 @@ def update_query(
                 query_id,
             ),
         )
+        _upsert_table_desc(cur, body.dst_table or "", body.description or "", username)
         conn.commit()
         return {"query_id": query_id, "sql_b1_comp_base_query": clean_sql}
     except VPNConnectionError as e:

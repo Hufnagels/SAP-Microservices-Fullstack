@@ -97,8 +97,8 @@ export default function QueryBuilder() {
   }, [existing, editId]);
 
   const handleSave = async () => {
-    if (!queryName.trim() || !sqlOrig.trim()) {
-      toast.warn('Name and SQL are required');
+    if (!queryName.trim() || !sqlOrig.trim() || !description.trim()) {
+      toast.warn('Name, Description and SQL are required');
       return;
     }
     if (queryName.length > 20) {
@@ -189,6 +189,9 @@ export default function QueryBuilder() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             fullWidth
+            required
+            error={!description.trim()}
+            helperText={!description.trim() ? 'Required' : undefined}
             placeholder="Short description of what this query retrieves"
           />
         </Stack>

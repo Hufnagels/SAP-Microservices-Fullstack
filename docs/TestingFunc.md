@@ -725,3 +725,26 @@ We need to add parameter for the nodes. We need to specified the behavering of t
     },
   },
 }
+
+# ------- sap-sync-ui ------------------------------------- 
+## Time: 2026-03-21 19:30
+### sap-sync-ui - sap-b1-adapter-service
+In New Query page:
+- change description to mandantory / required
+In Edit Query page
+- change description to mandantory / required
+
+Booth pages complete save/update fuction. This data must be saved to the wrk_TableDesc table:
+- dst_table
+- description
+- username
+
+If dst_table === EXCEL, bypass save/update
+
+
+## Time: 2026-03-21 20:30
+### sap-sync-ui - sap-b1-adapter-service
+
+Find a solution for SQL query which hasn't id field. This solution can run in sync process. 
+If - DB opreration - exsiting table doesn't have id field, than add one, but leave the SQL query intact.
+If - EXCEL opreration - the result must have ID field

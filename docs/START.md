@@ -183,8 +183,25 @@ This creates `ReportingDB` and all required tables (`logs_SyncJobs`, `wrk_TableD
 
 ### Step 4 — Start all services
 
+**Option A — one-command startup (recommended):**
+
+```bash
+./startup.sh          # full stack
+./startup.sh --sim    # + OPC-UA simulator (fake PLC)
+```
+
+**Option B — manual step-by-step:**
+
 ```bash
 make up
+```
+
+### Stopping the stack
+
+```bash
+./shutdown.sh              # stop app services (MSSQL kept running)
+./shutdown.sh --infra      # + stop MSSQL infrastructure
+./shutdown.sh --all        # stop everything (app + sim + infra)
 ```
 
 ---

@@ -48,7 +48,8 @@
   - [10. Troubleshooting](#10-troubleshooting)
   - [10.1 Session Guard (idle timeout)](#101-session-guard-idle-timeout)
     - [Renaming the InfluxDB organisation (without wiping data)](#renaming-the-influxdb-organisation-without-wiping-data)
-  - [11. Third-Party Sources](#11-third-party-sources)
+  - [11. Migration (macOS → Linux)](#11-migration-macos--linux)
+  - [12. Third-Party Sources](#12-third-party-sources)
     - [Infrastructure \& Runtime](#infrastructure--runtime)
     - [Backend (Python)](#backend-python)
     - [Frontend — Core Stack](#frontend--core-stack)
@@ -348,8 +349,27 @@ Creates `ReportingDB` and all tables: `logs_SyncJobs`, `wrk_QueryDef`, `wrk_Tabl
 
 ### Step 7 — Start all services
 
+**Option A — one-command startup (recommended):**
+
+```bash
+./startup.sh          # starts everything in correct order
+./startup.sh --sim    # + OPC-UA simulator (fake S7-1500 PLC for dev/test)
+```
+
+The script starts services in the right dependency order: databases → Traefik → auth-service → app services → monitoring.
+
+**Option B — manual:**
+
 ```bash
 make up
+```
+
+### Stopping the stack
+
+```bash
+./shutdown.sh              # stop app stack (MSSQL kept running)
+./shutdown.sh --infra      # + stop MSSQL infrastructure
+./shutdown.sh --all        # stop everything including simulator
 ```
 
 ### Step 8 — Install frontend dependencies
@@ -824,7 +844,29 @@ docker compose restart grafana
 
 ---
 
-## 11. Third-Party Sources
+## 11. Migration (macOS → Linux)
+
+See the full guide: [docs/MIGRATION.md](docs/MIGRATION.md)
+
+**Recommended OS: Ubuntu 24.04 LTS** — best Docker CE support, 5-year LTS, official MS ODBC Driver 18 packages, largest ecosystem.
+
+Key differences from macOS:
+- No Colima needed — Docker runs natively
+- Remove `colima start` from `startup.sh` (or just run `./startup.sh` — it works without Colima on Linux)
+- Image platform: Mac M1/M2/M3 builds `linux/arm64`; Linux server needs `linux/amd64` — Docker rebuilds automatically
+- Add a systemd unit to auto-start the stack on reboot
+
+Quick start on a fresh Ubuntu server:
+
+```bash
+# Install Docker CE, clone repo, fill .env, then:
+make infra-up
+./startup.sh
+```
+
+---
+
+## 12. Third-Party Sources
 
 ### Infrastructure & Runtime
 

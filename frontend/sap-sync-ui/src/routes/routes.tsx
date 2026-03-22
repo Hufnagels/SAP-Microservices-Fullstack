@@ -6,7 +6,6 @@ import SyncAsync     from '../pages/db-tools/SyncAsync';
 import SyncScheduled from '../pages/db-tools/SyncScheduled';
 import QueryList     from '../pages/querys/QueryList';
 import QueryBuilder  from '../pages/querys/QueryBuilder';
-import QueryTiming   from '../pages/querys/QueryTiming';
 import WorkHistoryIcon    from '@mui/icons-material/WorkHistory';
 import ListAltIcon        from '@mui/icons-material/ListAlt';
 import StorageIcon        from '@mui/icons-material/Storage';
@@ -16,7 +15,6 @@ import ScheduleIcon       from '@mui/icons-material/Schedule';
 import QueryStatsIcon     from '@mui/icons-material/QueryStats';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import BuildIcon          from '@mui/icons-material/Build';
-import AccessTimeIcon     from '@mui/icons-material/AccessTime';
 
 export interface RouteConfig {
   path: string;
@@ -62,7 +60,6 @@ export const routes: RouteConfig[] = [
     children: [
       { path: '/querys/list',    element: QueryList,    protected: true, icon: <FormatListBulletedIcon />, label: 'Query list',    showInNav: true },
       { path: '/querys/builder', element: QueryBuilder, protected: true, icon: <BuildIcon />,              label: 'Query builder', showInNav: true },
-      { path: '/querys/timeing', element: QueryTiming,  protected: true, icon: <AccessTimeIcon />,         label: 'Crontabing',    showInNav: true },
     ],
   },
 ];
