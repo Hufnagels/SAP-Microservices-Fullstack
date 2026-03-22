@@ -6,6 +6,8 @@
 
 - [Production Company MicroServices — Usage Guide](#production-company-microservices--usage-guide)
   - [Table of Contents](#table-of-contents)
+  - [Documentation Index](#documentation-index)
+  - [Screenshots](#screenshots)
   - [1. Project Goal](#1-project-goal)
   - [2. Architecture](#2-architecture)
     - [2.1 Logical architecture](#21-logical-architecture)
@@ -24,6 +26,7 @@
     - [Step 5 — Start core app services](#step-5--start-core-app-services)
     - [Step 6 — Initialize MSSQL schema (first time only)](#step-6--initialize-mssql-schema-first-time-only)
     - [Step 7 — Start all services](#step-7--start-all-services)
+    - [Stopping the stack](#stopping-the-stack)
     - [Step 8 — Install frontend dependencies](#step-8--install-frontend-dependencies)
   - [5. Makefile Reference](#5-makefile-reference)
     - [Infrastructure](#infrastructure)
@@ -44,9 +47,10 @@
     - [8.4 binpack-ui (port 5175)](#84-binpack-ui-port-5175)
     - [8.6 s7-status-ui (port 5179)](#86-s7-status-ui-port-5179)
     - [8.5 live-labeling-ui (port 5178)](#85-live-labeling-ui-port-5178)
+  - [8.7 Session Guard — idle timeout (all UIs)](#87-session-guard--idle-timeout-all-uis)
   - [9. SAP B1 Sync Flow (summary)](#9-sap-b1-sync-flow-summary)
   - [10. Troubleshooting](#10-troubleshooting)
-  - [10.1 Session Guard (idle timeout)](#101-session-guard-idle-timeout)
+    - [10.1 Session Guard (idle timeout)](#101-session-guard-idle-timeout)
     - [Renaming the InfluxDB organisation (without wiping data)](#renaming-the-influxdb-organisation-without-wiping-data)
   - [11. Migration (macOS → Linux)](#11-migration-macos--linux)
   - [12. Third-Party Sources](#12-third-party-sources)
@@ -58,6 +62,40 @@
     - [Frontend — Maps](#frontend--maps)
     - [Frontend — 3D Bin Packing Visualization](#frontend--3d-bin-packing-visualization)
     - [Bin Packing — Algorithm Sources](#bin-packing--algorithm-sources)
+
+---
+
+## Documentation Index
+
+| File | Description |
+|---|---|
+| [docs/START.md](docs/START.md) | Getting started guide — prerequisites, first install, Colima, Makefile reference, startup/shutdown scripts |
+| [docs/MIGRATION.md](docs/MIGRATION.md) | Migration guide for moving the stack from macOS to a Linux server (Ubuntu 24.04 LTS recommended) |
+| [docs/CHANGES.md](docs/CHANGES.md) | Changelog — all notable changes to the monorepo, newest first |
+| [docs/TODO.md](docs/TODO.md) | Deferred decisions — RabbitMQ and Loki keep/remove, future infrastructure choices |
+| [docs/architecture.md](docs/architecture.md) | Enterprise architecture — detailed logical and physical architecture diagrams |
+| [docs/diagrams.md](docs/diagrams.md) | Architecture diagrams — context, container, and component views |
+| [docs/s7_opcua_unified_guide.md](docs/s7_opcua_unified_guide.md) | S7-1500 OPC-UA integration guide — TIA Portal config → Python client → production deployment |
+| [docs/Binpack.md](docs/Binpack.md) | 3D bin packing problem description — EUR pallet optimization goals and algorithm notes |
+| [docs/Starter_template.md](docs/Starter_template.md) | Enterprise microservices starter template — reference architecture used as the base |
+| [docs/TestingFunc.md](docs/TestingFunc.md) | Testing log — chronological record of user testing sessions and reported issues |
+| [docs/sql/](docs/sql/) | SQL reference scripts — MSSQL and PostgreSQL snippets |
+
+---
+
+## Screenshots
+
+| UI | Preview | Description |
+|---|---|---|
+| **admin-ui** `:5176` | <img src="docs/pics/ScreenShot/admin-ui/Roles.png" width="260"> | Role-based permissions editor — per-service CRUD matrix for each role |
+| **admin-ui** signin | <img src="docs/pics/ScreenShot/admin-ui/Login.png" width="260"> | Sign-in page with video background |
+| **sap-sync-ui** `:5173` | <img src="docs/pics/ScreenShot/sap-sync-ui/Sync.png" width="260"> | Sync Job History — full audit log with status, rows written, error details |
+| **sap-sync-ui** scheduled | <img src="docs/pics/ScreenShot/sap-sync-ui/Crontab.png" width="260"> | Scheduled Sync — set cron expressions per query |
+| **binpack-ui** `:5175` | <img src="docs/pics/ScreenShot/binpack-ui/3Dview.png" width="260"> | 3D bin packing visualizer — EUR pallet stacking with layer breakdown |
+| **live-labeling-ui** `:5178` | <img src="docs/pics/ScreenShot/live-labeling-ui/Label.png" width="260"> | Label designer — Konva canvas with text, barcode, QR code, DataMatrix elements |
+| **sap-map-ui** `:5174` | <img src="docs/pics/ScreenShot/sap-map-ui/Customer.png" width="260"> | Company Sales Map — SAP customer addresses on Leaflet interactive map |
+| **s7-status-ui** `:5179` | <img src="docs/pics/ScreenShot/s7-status-ui/Page01.png" width="260"> | S7-1500 OPC-UA live status — connection info, statistics, live node values |
+| **s7-status-ui** config | <img src="docs/pics/ScreenShot/s7-status-ui/Page03.png" width="260"> | Node Configuration — define OPC-UA nodes, units, sim behaviour, active/inactive |
 
 ---
 

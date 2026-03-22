@@ -1,5 +1,35 @@
 # Getting Started
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Repository Structure](#repository-structure)
+- [Stack Architecture](#stack-architecture)
+- [1. Install](#1-install)
+  - [1.1 Clone / locate the repo](#11-clone--locate-the-repo)
+  - [1.2 Copy and fill in environment variables](#12-copy-and-fill-in-environment-variables)
+- [2. Start Colima (macOS)](#2-start-colima-macos)
+- [3. First Start (new machine)](#3-first-start-new-machine)
+  - [Step 1 — Start MSSQL infrastructure](#step-1--start-mssql-infrastructure)
+  - [Step 2 — Start core app services](#step-2--start-core-app-services)
+  - [Step 3 — Initialize MSSQL schema (first time only)](#step-3--initialize-mssql-schema-first-time-only)
+  - [Step 4 — Start all services](#step-4--start-all-services)
+  - [Stopping the stack](#stopping-the-stack)
+- [4. Makefile Reference](#4-makefile-reference)
+- [5. Verify Auth Service](#5-verify-auth-service)
+  - [5.1 Traefik dashboard](#51-traefik-dashboard)
+  - [5.2 Health check](#52-health-check)
+  - [5.3 First login](#53-first-login)
+  - [5.4 Verify token](#54-verify-token)
+  - [5.5 Create additional users](#55-create-additional-users)
+- [6. All Services and Gateway Paths](#6-all-services-and-gateway-paths)
+  - [Monitoring](#monitoring)
+- [7. SAP B1 Sync (requires VPN)](#7-sap-b1-sync-requires-vpn)
+- [8. Stop / Restart](#8-stop--restart)
+- [Troubleshooting](#troubleshooting)
+
+---
+
 ## Prerequisites
 
 | Tool | Version | Install |

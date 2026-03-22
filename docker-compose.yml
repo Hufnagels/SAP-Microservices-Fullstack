@@ -19,7 +19,7 @@ services:
       - "5672:5672"
       - "15672:15672"
     volumes:
-      - ./data/rabbitmq:/var/lib/rabbitmq
+      - rabbitmq_data:/var/lib/rabbitmq
 
   # ── Auth DB — dedicated, isolated ────────────────────────────────────────────
   # auth-service is the only consumer of this database.
@@ -340,6 +340,7 @@ services:
 
 volumes:
   postgres_opcua_data:
+  rabbitmq_data:
 
 networks:
   # db_net is owned by the infrastructure stack (infrastructure/mssql/docker-compose.yml).
