@@ -88,7 +88,7 @@
 | UI | Preview | Description |
 |---|---|---|
 | **admin-ui** `:5176` | <img src="docs/pics/ScreenShot/admin-ui/Roles.png" width="260"> | Role-based permissions editor — per-service CRUD matrix for each role |
-| **admin-ui** signin | <img src="docs/pics/ScreenShot/admin-ui/Login.png" width="260"> | Sign-in page with video background |
+| **admin-ui** services | <img src="docs/pics/ScreenShot/admin-ui/ServicesList.png" width="260"> | Services List page with servies status |
 | **sap-sync-ui** `:5173` | <img src="docs/pics/ScreenShot/sap-sync-ui/Sync.png" width="260"> | Sync Job History — full audit log with status, rows written, error details |
 | **sap-sync-ui** scheduled | <img src="docs/pics/ScreenShot/sap-sync-ui/Crontab.png" width="260"> | Scheduled Sync — set cron expressions per query |
 | **binpack-ui** `:5175` | <img src="docs/pics/ScreenShot/binpack-ui/3Dview.png" width="260"> | 3D bin packing visualizer — EUR pallet stacking with layer breakdown |
