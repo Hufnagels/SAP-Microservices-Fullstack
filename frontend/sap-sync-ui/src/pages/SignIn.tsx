@@ -44,7 +44,7 @@ export default function SignIn() {
       {/* Left panel: demo video */}
       <Box sx={{ display: { xs: 'none', sm: 'flex' }, flex: 1, position: 'relative', overflow: 'hidden', bgcolor: 'grey.900', alignItems: 'center', justifyContent: 'center' }}>
         <video autoPlay loop muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.7 }}>
-          <source src="/sap-sync-ui-demo.mp4" type="video/mp4" />
+          <source src="/demo.mp4" type="video/mp4" />
         </video>
         <Box sx={{ position: 'absolute', bottom: 48, left: 48, right: 48, color: 'white' }}>
           <Typography variant="h4" fontWeight={700} gutterBottom>{VITE_APP_NAME}</Typography>

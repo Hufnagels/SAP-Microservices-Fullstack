@@ -57,7 +57,7 @@ export default function SignIn() {
           autoPlay loop muted playsInline
           style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.7 }}
         >
-          <source src="/map-ui-demo.mp4" type="video/mp4" />
+          <source src="/demo.mp4" type="video/mp4" />
         </video>
         <Box sx={{ position: 'absolute', bottom: 48, left: 48, right: 48, color: 'white' }}>
           <Typography variant="h4" fontWeight={700} gutterBottom>{VITE_APP_NAME}</Typography>

@@ -76,7 +76,7 @@ export default function SignIn() {
           style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.7 }}
         >
           {/* Drop a auth-ui-demo.mp4 into frontend/public/ to show a real video */}
-          <source src="/auth-ui-demo.mp4" type="video/mp4" />
+          <source src="/demo.mp4" type="video/mp4" />
         </video>
 
         {/* Overlay text */}
