@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import Box from '@mui/material/Box';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -8,6 +7,7 @@ import 'leaflet.markercluster';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
+import { Loader2 } from 'lucide-react';
 import type { RootState } from '../../app/store';
 
 interface Partner {
@@ -23,11 +23,11 @@ interface Partner {
 export default function MapPage() {
   const token = useSelector((state: RootState) => state.auth.token);
   const [partners, setPartners] = useState<Partner[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const mapRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading]   = useState<boolean>(true);
+  const [error, setError]       = useState<string | null>(null);
+  const mapRef         = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.MarkerClusterGroup | null>(null);
+  const markersRef     = useRef<L.MarkerClusterGroup | null>(null);
 
   const getMarkerColor = (sales: number): string => {
     if (sales >= 150000000) return 'green';
@@ -38,10 +38,7 @@ export default function MapPage() {
 
   const createColoredMarker = (lat: number, lon: number, color: string): L.Marker => {
     const markerColors: Record<string, string> = {
-      red:    '#faa686',
-      green:  '#7def9a',
-      violet: '#ff9bd1',
-      blue:   '#9bceff',
+      red: '#faa686', green: '#7def9a', violet: '#ff9bd1', blue: '#9bceff',
     };
     const colorHex = markerColors[color] || '#dfdfdf';
     const svgIcon = `
@@ -50,7 +47,7 @@ export default function MapPage() {
           style="fill: ${colorHex}; stroke: #424242; stroke-width: 3px;"/>
       </svg>`;
     const customIcon = L.icon({
-      iconUrl: `data:image/svg+xml;base64,${btoa(svgIcon)}`,
+      iconUrl:    `data:image/svg+xml;base64,${btoa(svgIcon)}`,
       iconSize:   [36, 65],
       iconAnchor: [16, 65],
       popupAnchor:[2, -15],
@@ -66,10 +63,7 @@ export default function MapPage() {
         const { data } = await axios.get<Partner[]>('/maps/partners', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (isMounted) {
-          setPartners(data);
-          setLoading(false);
-        }
+        if (isMounted) { setPartners(data); setLoading(false); }
       } catch (err) {
         if (isMounted) {
           const msg = err instanceof Error ? err.message : 'Failed to load map data';
@@ -94,10 +88,8 @@ export default function MapPage() {
         mapInstanceRef.current = map;
         setTimeout(() => map.invalidateSize(), 100);
       }
-
       const map = mapInstanceRef.current;
       if (markersRef.current) map.removeLayer(markersRef.current);
-
       const markers = L.markerClusterGroup();
       partners.forEach((p) => {
         const color  = getMarkerColor(p.sales);
@@ -110,10 +102,8 @@ export default function MapPage() {
           </div>`);
         markers.addLayer(marker);
       });
-
       map.addLayer(markers);
       markersRef.current = markers;
-
       const group = L.featureGroup(partners.map((p) => L.marker([p.lat, p.lon])));
       map.fitBounds(group.getBounds().pad(0.1));
     }
@@ -121,15 +111,10 @@ export default function MapPage() {
 
   if (loading) {
     return (
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'calc(100vh - 128px)' }}>
-        <div style={{ textAlign:'center' }}>
-          <div style={{
-            border:'3px solid #f3f4f6', borderTop:'3px solid #d4e157',
-            borderRadius:'50%', width:48, height:48,
-            animation:'spin 1s linear infinite', margin:'0 auto 1rem',
-          }} />
-          <p style={{ color:'#6b7280' }}>Loading map data...</p>
-          <style>{`@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`}</style>
+      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground text-sm">Loading map data...</p>
         </div>
       </div>
     );
@@ -137,7 +122,7 @@ export default function MapPage() {
 
   if (error) {
     return (
-      <div style={{ padding:16, color:'#991b1b', background:'#fee2e2', borderRadius:8 }}>
+      <div className="p-4 text-red-800 bg-red-100 rounded-lg dark:text-red-300 dark:bg-red-950">
         Error: {error}
       </div>
     );
@@ -145,20 +130,15 @@ export default function MapPage() {
 
   if (partners.length === 0) {
     return (
-      <div style={{ padding:16, color:'#6b7280' }}>
+      <p className="p-4 text-muted-foreground">
         No partner data yet. Use POST /maps/partners/bulk to load data.
-      </div>
+      </p>
     );
   }
 
   return (
-    <Box sx={{
-      height: 'calc(100vh - 128px)',
-      width: { xs: 'calc(100vw - 48px)', sm: 'calc(100vw - 288px)' },
-      borderRadius: 2,
-      overflow: 'hidden',
-    }}>
-      <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
-    </Box>
+    <div className="isolate h-[calc(100vh-4rem)] w-full rounded-lg overflow-hidden">
+      <div ref={mapRef} className="h-full w-full" />
+    </div>
   );
 }

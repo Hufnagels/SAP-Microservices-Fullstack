@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.core import connect_sql, fetch_b1_rows, VPNConnectionError, check_vpn_connection
+from app.core import connect_sql, fetch_b1_rows, VPNConnectionError, create_placeholder_table
 from app.core.sql_preprocessor import preprocess_sql
 from app import security
 
@@ -69,7 +69,6 @@ def list_queries(
 ):
     conn = None
     try:
-        check_vpn_connection()
         conn = connect_sql()
         cur = conn.cursor()
         cur.execute(
@@ -83,8 +82,6 @@ def list_queries(
         )
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
-    except VPNConnectionError as e:
-        raise HTTPException(status_code=503, detail=e.to_json())
     except Exception:
         log.exception("Failed to list queries")
         raise HTTPException(status_code=500, detail="Database error")
@@ -109,10 +106,11 @@ def create_query(
 
     conn = None
     try:
-        check_vpn_connection()
+        create_placeholder_table("dbo", body.dst_table or "")
         conn = connect_sql()
         cur = conn.cursor()
         username = body.username or current_user.get("sub")
+        _upsert_table_desc(cur, body.dst_table or "", body.description or "", username)
         cur.execute(
             """
             INSERT INTO dbo.wrk_QueryDef
@@ -134,7 +132,6 @@ def create_query(
             ),
         )
         query_id = cur.fetchone()[0]
-        _upsert_table_desc(cur, body.dst_table or "", body.description or "", username)
         conn.commit()
         return {
             "query_id": query_id,
@@ -170,10 +167,11 @@ def update_query(
 
     conn = None
     try:
-        check_vpn_connection()
+        create_placeholder_table("dbo", body.dst_table or "")
         conn = connect_sql()
         cur = conn.cursor()
         username = body.username or current_user.get("sub")
+        _upsert_table_desc(cur, body.dst_table or "", body.description or "", username)
         cur.execute(
             """
             UPDATE dbo.wrk_QueryDef
@@ -200,7 +198,6 @@ def update_query(
                 query_id,
             ),
         )
-        _upsert_table_desc(cur, body.dst_table or "", body.description or "", username)
         conn.commit()
         return {"query_id": query_id, "sql_b1_comp_base_query": clean_sql}
     except VPNConnectionError as e:
@@ -226,7 +223,6 @@ def delete_query(
 ):
     conn = None
     try:
-        check_vpn_connection()
         conn = connect_sql()
         cur = conn.cursor()
         cur.execute(

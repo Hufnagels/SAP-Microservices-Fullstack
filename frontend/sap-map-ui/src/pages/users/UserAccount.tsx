@@ -1,99 +1,50 @@
-/*
- * pages/users/UserAccount.tsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Purpose : "My Account" page that lets the currently logged-in user update
- *           their display name, email, and avatar (letter initials or cropped
- *           photo). Changes are persisted via PUT /users/me.
- *
- * Relationships
- *   Dispatches : authSlice.updateProfile thunk
- *   Reads      : state.auth.user  (name, email, role, avatar_mode, avatar_base64)
- *   Uses       : components/common/AvatarDropzone, AvatarCropDialog
- *
- * Key state
- *   name, email     – editable profile fields
- *   avatarMode      – 'letter' | 'image'
- *   savedAvatar     – base64 PNG string of the cropped avatar (null for letter mode)
- *   cropImage       – image URL passed into AvatarCropDialog when it opens
- *   editorOpen      – controls crop dialog visibility
- *   saving, saveMsg – async save state and user-facing feedback message
- */
 import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import Box from '@mui/material/Box';
-import Grid from '@mui/material/Grid';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Divider from '@mui/material/Divider';
-import Chip from '@mui/material/Chip';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import CircularProgress from '@mui/material/CircularProgress';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import OutlinedInput from '@mui/material/OutlinedInput';
-import InputAdornment from '@mui/material/InputAdornment';
-import IconButton from '@mui/material/IconButton';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
-import ImageIcon from '@mui/icons-material/Image';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import { Eye, EyeOff, Loader2, Type, ImageIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { toast } from 'react-toastify';
 import { updateProfile } from '../../features/auth/authSlice';
 import type { RootState, AppDispatch } from '../../app/store';
 import AvatarDropzone from '../../components/common/HadlingAvatars/AvatarDropzone';
 import AvatarCropDialog from '../../components/common/HadlingAvatars/AvatarCropDialog';
 
-// ── Main page ─────────────────────────────────────────────────────────────────
 export default function UserAccount() {
   const dispatch = useDispatch<AppDispatch>();
-  const user = useSelector((state: RootState) => state.auth.user);
+  const user     = useSelector((state: RootState) => state.auth.user);
 
-  const [name, setName] = useState(user?.name ?? 'Admin User');
+  const [name, setName]   = useState(user?.name ?? 'Admin User');
   const [email, setEmail] = useState(user?.email ?? 'admin@example.com');
-
-  // Avatar mode: 'letter' shows initials, 'image' shows the uploaded photo
-  const [avatarMode, setAvatarMode] = useState<'letter' | 'image'>(
-    user?.avatar_mode ?? 'letter'
-  );
-  const [savedAvatar, setSavedAvatar] = useState<string | null>(
-    user?.avatar_base64 ?? null
-  );
-
-  // Crop dialog state
+  const [avatarMode, setAvatarMode] = useState<'letter' | 'image'>(user?.avatar_mode ?? 'letter');
+  const [savedAvatar, setSavedAvatar] = useState<string | null>(user?.avatar_base64 ?? null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [cropImage, setCropImage]   = useState<string | null>(null);
-
-  // Password
   const [showPassword, setShowPassword] = useState(false);
-
   const [saving, setSaving] = useState(false);
 
-  // ── Avatar mode toggle ───────────────────────────────────────────────────
-  const handleModeChange = (_: React.MouseEvent, value: 'letter' | 'image' | null) => {
-    if (!value) return;
+  const handleModeChange = (value: 'letter' | 'image') => {
     setAvatarMode(value);
     if (value === 'letter') setSavedAvatar(null);
   };
 
   const openCropWith = (img: string) => { setCropImage(img); setEditorOpen(true); };
 
-  // ── Save profile ─────────────────────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
     try {
       await dispatch(updateProfile({
-        name,
-        email,
-        avatar_mode: avatarMode,
+        name, email,
+        avatar_mode:   avatarMode,
         avatar_base64: avatarMode === 'image' ? savedAvatar : null,
       })).unwrap();
       toast.success('Profile saved successfully.');
-    } catch (err: any) {
-      toast.error(err?.detail ?? 'Failed to save profile.');
+    } catch (err: unknown) {
+      const detail = (err as { detail?: string })?.detail;
+      toast.error(detail ?? 'Failed to save profile.');
     } finally {
       setSaving(false);
     }
@@ -102,132 +53,106 @@ export default function UserAccount() {
   const initials = name[0]?.toUpperCase() ?? 'A';
 
   return (
-    <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        My Account
-      </Typography>
+    <div>
+      <h1 className="text-3xl font-bold mb-6">My Account</h1>
 
-      <Grid container spacing={3}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
         {/* ── Left: profile card ── */}
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <div className="rounded-lg border border-border bg-card p-6 text-center space-y-4">
 
-            {/* Mode toggle */}
-            <ToggleButtonGroup
-              value={avatarMode}
-              exclusive
-              size="small"
-              onChange={handleModeChange}
-              sx={{ mb: 2.5 }}
-            >
-              <ToggleButton value="letter">
-                <TextFieldsIcon fontSize="small" sx={{ mr: 0.5 }} />
-                Letter
-              </ToggleButton>
-              <ToggleButton value="image">
-                <ImageIcon fontSize="small" sx={{ mr: 0.5 }} />
-                Image
-              </ToggleButton>
-            </ToggleButtonGroup>
-
-            {/* Avatar preview */}
-            {avatarMode === 'letter' ? (
-              <Avatar
-                sx={{
-                  width: 96, height: 96,
-                  mx: 'auto', mb: 2,
-                  bgcolor: 'primary.main',
-                  fontSize: '2.5rem',
-                }}
+          {/* Mode toggle */}
+          <div className="flex rounded-md border border-border overflow-hidden text-xs w-fit mx-auto">
+            {(['letter', 'image'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleModeChange(mode)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 transition-colors',
+                  avatarMode === mode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'
+                )}
               >
-                {initials}
-              </Avatar>
-            ) : savedAvatar ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Avatar src={savedAvatar} sx={{ width: 96, height: 96 }} />
-                <Button size="small" variant="outlined" onClick={() => openCropWith(savedAvatar)}>
-                  Change photo
-                </Button>
-              </Box>
-            ) : (
-              <Box sx={{ mb: 2 }}>
-                <AvatarDropzone onFile={openCropWith} />
-              </Box>
-            )}
+                {mode === 'letter' ? <Type className="h-3.5 w-3.5" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                {mode === 'letter' ? 'Letter' : 'Image'}
+              </button>
+            ))}
+          </div>
 
-            <Typography variant="h6" fontWeight={600}>{name}</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              {email}
-            </Typography>
-            <Chip label={user?.role ?? 'admin'} color="primary" size="small" />
-          </Paper>
-        </Grid>
+          {/* Avatar preview */}
+          {avatarMode === 'letter' ? (
+            <Avatar className="w-24 h-24 mx-auto text-3xl bg-primary text-primary-foreground">
+              <AvatarFallback className="text-3xl bg-primary text-primary-foreground">{initials}</AvatarFallback>
+            </Avatar>
+          ) : savedAvatar ? (
+            <div className="flex flex-col items-center gap-2">
+              <Avatar className="w-24 h-24 mx-auto">
+                <AvatarImage src={savedAvatar} alt="Avatar" />
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <Button size="sm" variant="outline" onClick={() => openCropWith(savedAvatar)}>
+                Change photo
+              </Button>
+            </div>
+          ) : (
+            <AvatarDropzone onFile={openCropWith} />
+          )}
+
+          <div>
+            <p className="font-semibold text-lg">{name}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{email}</p>
+          </div>
+          <Badge variant="default">{user?.role ?? 'admin'}</Badge>
+        </div>
 
         {/* ── Right: settings form ── */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" fontWeight={600} gutterBottom>
-              Profile Settings
-            </Typography>
-            <Divider sx={{ mb: 3 }} />
+        <div className="md:col-span-2 rounded-lg border border-border bg-card p-6">
+          <h2 className="text-lg font-semibold mb-1">Profile Settings</h2>
+          <hr className="border-border mb-5" />
 
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth label="Full Name"
-                  value={name} onChange={(e) => setName(e.target.value)}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Full Name</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="role">Role</Label>
+              <Input id="role" value={user?.role ?? 'admin'} disabled />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">New Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Leave blank to keep current"
+                  className="pr-10"
                 />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth label="Email" type="email"
-                  value={email} onChange={(e) => setEmail(e.target.value)}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="Role" value={user?.role ?? 'admin'} disabled />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth variant="outlined">
-                  <InputLabel htmlFor="account-password">New Password</InputLabel>
-                  <OutlinedInput
-                    id="account-password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Leave blank to keep current"
-                    endAdornment={
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label={showPassword ? 'hide the password' : 'display the password'}
-                          onClick={() => setShowPassword((s) => !s)}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onMouseUp={(e) => e.preventDefault()}
-                          edge="end"
-                        >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    }
-                    label="New Password"
-                  />
-                </FormControl>
-              </Grid>
-
-              <Grid size={{ xs: 12 }}>
-                <Button
-                  variant="contained"
-                  disabled={saving}
-                  onClick={handleSave}
-                  sx={{ mt: 1 }}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {saving ? <CircularProgress size={20} color="inherit" /> : 'Save Changes'}
-                </Button>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-      </Grid>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
 
-      {/* ── Avatar crop dialog ── */}
+            <div className="sm:col-span-2 pt-2">
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <AvatarCropDialog
         open={editorOpen}
         onClose={() => setEditorOpen(false)}
@@ -235,6 +160,6 @@ export default function UserAccount() {
         image={cropImage}
         title="Edit Profile Photo"
       />
-    </Box>
+    </div>
   );
 }

@@ -1,12 +1,9 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { lightTheme, darkTheme } from './theme/muiTheme';
 import { routes, flattenRoutes } from './routes/routes';
 import MainLayout from './components/layout/MainLayout';
 import { store } from './app/store';
@@ -33,6 +30,7 @@ export default function App() {
   const { mode } = useSelector((state: RootState) => state.theme);
   const { token } = useSelector((state: RootState) => state.auth);
 
+  // Sync dark class on <html>
   useEffect(() => {
     document.documentElement.classList.toggle('dark', mode === 'dark');
   }, [mode]);
@@ -41,14 +39,12 @@ export default function App() {
     if (token) dispatch(fetchCurrentUser());
   }, [token, dispatch]);
 
-  const muiTheme        = mode === 'dark' ? darkTheme : lightTheme;
   const flat            = flattenRoutes(routes);
   const publicRoutes    = flat.filter((r) => !r.protected);
   const protectedRoutes = flat.filter((r) =>  r.protected);
 
   return (
-    <ThemeProvider theme={muiTheme}>
-      <CssBaseline />
+    <>
       <BrowserRouter>
         <Routes>
           {publicRoutes.map((route) => (
@@ -66,6 +62,6 @@ export default function App() {
       </BrowserRouter>
       {token && <SessionGuard />}
       <ToastContainer position="bottom-right" autoClose={4000} />
-    </ThemeProvider>
+    </>
   );
 }

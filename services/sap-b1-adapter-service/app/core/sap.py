@@ -2,7 +2,6 @@
 SAP B1 Service Layer integration
 """
 import re
-import socket
 import logging
 from urllib.parse import urlparse
 from typing import Dict, Any, Optional
@@ -10,6 +9,7 @@ from typing import Dict, Any, Optional
 import requests
 
 from app.settings import Settings as _Settings
+from shared.python_common.vpn_check import check_vpn_connection as _check_vpn, VPNConnectionError
 
 _s = _Settings()
 B1_BASE_URL = _s.b1_base_url
@@ -23,114 +23,14 @@ log = logging.getLogger(__name__)
 
 _odata_escape_re = re.compile(r"_x([0-9A-Fa-f]{4})_")
 
-
-class VPNConnectionError(Exception):
-    """Raised when VPN connection to SAP B1 server is not available"""
-    def __init__(self, message: str, details: dict = None):
-        self.message = message
-        self.details = details or {}
-        super().__init__(self.message)
-
-    def to_json(self):
-        """Convert error to JSON-serializable dict"""
-        return {
-            "error": True,
-            "error_code": "VPN_NOT_CONNECTED",
-            "message": self.message,
-            "details": self.details
-        }
+_b1_parsed = urlparse(B1_BASE_URL)
+_B1_HOST = _b1_parsed.hostname
+_B1_PORT = _b1_parsed.port or (443 if _b1_parsed.scheme == "https" else 80)
 
 
-def check_vpn_connection(timeout: int = 5) -> bool:
-    """
-    Check if VPN tunnel to SAP B1 server is active
-
-    Args:
-        timeout: Connection timeout in seconds
-
-    Returns:
-        True if connection is successful, False otherwise
-
-    Raises:
-        VPNConnectionError: If VPN connection is not available
-    """
-    # Parse the SAP B1 URL to extract host and port
-    parsed_url = urlparse(B1_BASE_URL)
-    host = parsed_url.hostname
-    port = parsed_url.port or (443 if parsed_url.scheme == 'https' else 80)
-
-    log.info(f"Checking VPN connection to SAP B1 server: {host}:{port}")
-
-    try:
-        # Try to establish a TCP connection to the SAP server
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((host, port))
-        sock.close()
-
-        if result == 0:
-            log.info(f"✓ VPN connection verified - SAP B1 server reachable at {host}:{port}")
-            return True
-        else:
-            log.error(f"✗ VPN connection failed - Cannot reach SAP B1 server at {host}:{port}")
-            raise VPNConnectionError(
-                message=f"VPN connection required - SAP B1 server not reachable",
-                details={
-                    "server": host,
-                    "port": port,
-                    "error_code": result,
-                    "troubleshooting": [
-                        "Check if OpenVPN or your VPN client is running",
-                        "Verify VPN credentials and configuration",
-                        f"Test connectivity: ping {host}",
-                        "Check VPN tunnel status",
-                        "Ensure network routes are configured correctly"
-                    ]
-                }
-            )
-    except socket.gaierror as e:
-        # DNS resolution failed
-        log.error(f"✗ DNS resolution failed for {host}: {e}")
-        raise VPNConnectionError(
-            message=f"Cannot resolve SAP B1 server hostname - VPN may not be connected",
-            details={
-                "server": host,
-                "error": str(e),
-                "troubleshooting": [
-                    "Check if VPN is connected",
-                    "Verify VPN DNS settings",
-                    f"Check if hostname '{host}' is correct",
-                    "Test DNS resolution: nslookup {host}"
-                ]
-            }
-        )
-    except socket.timeout:
-        log.error(f"✗ Connection timeout to {host}:{port}")
-        raise VPNConnectionError(
-            message=f"Connection timeout to SAP B1 server - VPN likely not connected",
-            details={
-                "server": host,
-                "port": port,
-                "timeout": timeout,
-                "troubleshooting": [
-                    "Check if VPN is connected and active",
-                    "Verify firewall allows VPN traffic",
-                    "Increase timeout if network is slow",
-                    "Check VPN tunnel status"
-                ]
-            }
-        )
-    except Exception as e:
-        log.error(f"✗ Unexpected error checking VPN connection: {e}")
-        raise VPNConnectionError(
-            message=f"Failed to verify VPN connection to SAP B1 server",
-            details={
-                "server": host,
-                "port": port,
-                "error": str(e),
-                "error_type": type(e).__name__
-            }
-        )
+def check_vpn_connection(timeout: int = 5) -> None:
+    """Check VPN reachability of the configured SAP B1 server."""
+    _check_vpn(host=_B1_HOST, port=_B1_PORT, timeout=timeout)
 
 
 def b1_url(path: str) -> str:

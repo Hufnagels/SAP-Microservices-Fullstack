@@ -207,10 +207,10 @@ class OPCUAPoller:
             try:
                 if self.subscription:
                     await self.subscription.delete()
-                await self.client.disconnect()
-                logger.info("Disconnected from OPC-UA server")
-            except Exception as e:
-                logger.error(f"Disconnect error: {e}")
+            except Exception:
+                pass
+            await self._safe_disconnect()
+            logger.info("Disconnected from OPC-UA server")
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
@@ -346,12 +346,26 @@ class OPCUAPoller:
 
     # ── Internal ───────────────────────────────────────────────────────────────
 
+    async def _safe_disconnect(self):
+        """Disconnect with a hard timeout so the poll loop never hangs."""
+        if not self.client:
+            return
+        try:
+            await asyncio.wait_for(self.client.disconnect(), timeout=5.0)
+        except Exception:
+            pass
+        finally:
+            self.client = None
+
     async def _ensure_connected(self) -> bool:
         if self.client and self._connected:
             return True
         try:
             logger.info(f"Connecting → {self.endpoint_url}")
-            self.client = Client(url=self.endpoint_url)
+            # watchdog_intervall=30: extend the internal keepalive to 30 s so it
+            # doesn't fire during a normal poll cycle. We handle reconnection
+            # ourselves in _poll_loop.
+            self.client = Client(url=self.endpoint_url, timeout=10, watchdog_intervall=30)
             if self.username and self.password:
                 self.client.set_user(self.username)
                 self.client.set_password(self.password)
@@ -363,7 +377,7 @@ class OPCUAPoller:
         except Exception as e:
             logger.error(f"OPC-UA connection failed: {e}")
             self._connected = False
-            self.client = None
+            await self._safe_disconnect()
             return False
 
     async def _poll_loop(self):
@@ -405,18 +419,14 @@ class OPCUAPoller:
                 self._successful_reads += 1
                 self._consecutive_errors = 0
                 self._last_successful_read = time.time()
+                self._connected = True
 
             except Exception as e:
                 self._consecutive_errors += 1
                 self._failed_reads += 1
                 logger.error(f"Poll error #{self._consecutive_errors}: {e}")
                 self._connected = False
-                if self.client:
-                    try:
-                        await self.client.disconnect()
-                    except Exception:
-                        pass
-                    self.client = None
+                await self._safe_disconnect()
 
             elapsed = time.time() - loop_start
             await asyncio.sleep(max(0, self.poll_interval - elapsed))

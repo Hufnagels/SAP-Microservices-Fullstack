@@ -122,6 +122,7 @@ services:
       B1_COMPANY_DB: ${SAP_B1_COMPANY_DB:-BRD_PS_20250407}
       B1_USER: ${SAP_B1_USERNAME:-termelesig}
       B1_PASSWORD: ${SAP_B1_PASSWORD:-}
+      VPN_BYPASS: ${VPN_BYPASS:-false}
       DST_SERVER: ${DST_SQL_SERVER:-mssql_server,1433}
       DST_DB: ${DST_SQL_DB:-ReportingDB}
       DST_USER: ${DST_SQL_USER:-sa}

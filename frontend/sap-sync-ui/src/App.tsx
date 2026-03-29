@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
 import axios from 'axios';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -37,13 +36,16 @@ export default function App() {
     if (token) dispatch(fetchCurrentUser());
   }, [token, dispatch]);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', mode === 'dark');
+  }, [mode]);
+
   const flat            = flattenRoutes(routes);
   const publicRoutes    = flat.filter((r) => !r.protected);
   const protectedRoutes = flat.filter((r) => r.protected);
 
   return (
     <ThemeProvider theme={mode === 'dark' ? darkTheme : lightTheme}>
-      <CssBaseline />
       <BrowserRouter>
         <Routes>
           {publicRoutes.map((r) => (

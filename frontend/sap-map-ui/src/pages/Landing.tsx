@@ -1,61 +1,27 @@
 import { useNavigate } from 'react-router-dom';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
+import { Button } from '@/components/ui/button';
 import { VITE_APP_NAME } from '../features/config';
 
 export default function Landing() {
   const navigate = useNavigate();
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', bgcolor: 'background.default' }}>
-      {/* Left: video panel */}
-      <Box
-        component="video"
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Left: video */}
+      <video
         src=""
-        autoPlay
-        muted
-        loop
-        playsInline
-        sx={{
-          width: 'calc(100vw - 420px)',
-          height: '100vh',
-          objectFit: 'cover',
-          bgcolor: '#0d1117',
-          flexShrink: 0,
-        }}
+        autoPlay muted loop playsInline
+        className="flex-1 h-full object-cover bg-[#0d1117]"
       />
 
-      {/* Right: CTA panel */}
-      <Box
-        sx={{
-          width: 420,
-          flexShrink: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          px: 4,
-          backgroundImage: 'linear-gradient(to bottom, #0d1117, #161b22)',
-          textAlign: 'center',
-        }}
-      >
-        <Typography variant="h3" fontWeight={700} color="primary" gutterBottom>
-          {VITE_APP_NAME}
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 5 }}>
-          SAP B1 data visualized on interactive maps
-        </Typography>
-        <Button
-          variant="contained"
-          size="large"
-          fullWidth
-          onClick={() => navigate('/signin')}
-          sx={{ py: 1.5, fontSize: '1.1rem' }}
-        >
+      {/* Right: CTA */}
+      <div className="w-[420px] shrink-0 flex flex-col items-center justify-center px-8 text-center bg-gradient-to-b from-[#0d1117] to-[#161b22]">
+        <h1 className="text-4xl font-bold text-primary mb-3">{VITE_APP_NAME}</h1>
+        <p className="text-muted-foreground mb-10">SAP B1 data visualized on interactive maps</p>
+        <Button size="lg" className="w-full text-lg py-6" onClick={() => navigate('/signin')}>
           Sign In
         </Button>
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

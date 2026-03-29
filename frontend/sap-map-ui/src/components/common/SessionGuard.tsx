@@ -1,21 +1,9 @@
-/*
- * components/common/SessionGuard.tsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Purpose : After IDLE_MS of user inactivity, shows a dialog:
- *             "Stay logged in" → POST /auth/refresh → new token stored, timer reset
- *             "Exit"           → signOut → redirect to /signin
- *
- * Triggers: mousemove, click, keydown, scroll, touchstart
- *
- * IDLE_MS  : 10 000 ms (10 s) — test value; change to e.g. 15 * 60 * 1000 for prod
- */
-
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography,
-} from '@mui/material';
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { signOut, renewToken } from '../../features/auth/authSlice';
 import type { RootState, AppDispatch } from '../../app/store';
 
@@ -49,7 +37,7 @@ export default function SessionGuard() {
   const handleStay = async () => {
     setShowModal(false);
     try {
-      await (dispatch(renewToken()) as any).unwrap();
+      await dispatch(renewToken()).unwrap();
     } catch {
       dispatch(signOut());
     }
@@ -61,19 +49,19 @@ export default function SessionGuard() {
   };
 
   return (
-    <Dialog open={showModal} disableEscapeKeyDown>
-      <DialogTitle>Session Expiring</DialogTitle>
+    <Dialog open={showModal}>
       <DialogContent>
-        <Typography>
-          Your session is about to expire. Do you want to stay logged in?
-        </Typography>
+        <DialogHeader>
+          <DialogTitle>Session Expiring</DialogTitle>
+          <DialogDescription>
+            Your session is about to expire. Do you want to stay logged in?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="destructive" onClick={handleExit}>Exit</Button>
+          <Button onClick={handleStay} autoFocus>Stay logged in</Button>
+        </DialogFooter>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleExit} color="error">Exit</Button>
-        <Button onClick={handleStay} variant="contained" autoFocus>
-          Stay logged in
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 }

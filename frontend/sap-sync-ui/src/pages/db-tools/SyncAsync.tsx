@@ -1,10 +1,5 @@
 // src/pages/SyncAsync.tsx
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  Box, Typography, TextField, Button, Stack, FormControl,
-  InputLabel, Select, MenuItem, CircularProgress, Autocomplete,
-} from '@mui/material';
+import { Box, Typography } from '@mui/material';
 
 export default function SyncAsync() {
   

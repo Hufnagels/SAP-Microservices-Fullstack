@@ -1,21 +1,6 @@
-/*
- * components/common/AvatarDropzone.tsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Purpose : Reusable drag-and-drop image upload area for avatar selection.
- *           Extracted from UserAccount.tsx and Users.tsx to remove duplication.
- *
- * Used by : pages/users/UserAccount.tsx, pages/users/Users.tsx,
- *           components/common/AvatarCropDialog.tsx (compact variant inside dialog)
- *
- * Props
- *   onFile  – callback fired with an object URL of the dropped/selected file
- *   compact – when true renders with reduced padding and smaller icon for use
- *             inside dialogs; default false
- */
 import { useDropzone } from 'react-dropzone';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import ImageIcon from '@mui/icons-material/Image';
+import { ImageIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AvatarDropzoneProps {
   onFile: (objectUrl: string) => void;
@@ -32,34 +17,24 @@ export default function AvatarDropzone({ onFile, compact = false }: AvatarDropzo
   });
 
   return (
-    <Box
+    <div
       {...getRootProps()}
-      sx={{
-        width: '100%',
-        border: '2px dashed',
-        borderColor: isDragActive ? 'primary.main' : 'divider',
-        borderRadius: 2,
-        py: compact ? 2 : 4,
-        px: compact ? 1 : 2,
-        textAlign: 'center',
-        cursor: 'pointer',
-        bgcolor: isDragActive ? 'action.hover' : 'transparent',
-        transition: 'all 0.2s',
-        '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
-      }}
+      className={cn(
+        'w-full border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors',
+        compact ? 'py-3 px-2' : 'py-8 px-4',
+        isDragActive
+          ? 'border-primary bg-primary/5'
+          : 'border-border hover:border-primary hover:bg-accent'
+      )}
     >
       <input {...getInputProps()} />
-      <ImageIcon sx={{ fontSize: compact ? 32 : 40, color: 'text.disabled', mb: compact ? 0.5 : 1 }} />
-      <Typography variant={compact ? 'caption' : 'body2'} color="text.secondary" display="block">
+      <ImageIcon className={cn('mx-auto mb-1 text-muted-foreground', compact ? 'h-7 w-7' : 'h-9 w-9')} />
+      <p className={cn('text-muted-foreground', compact ? 'text-xs' : 'text-sm')}>
         {isDragActive
           ? (compact ? 'Drop image here…' : 'Drop the image here…')
-          : (compact ? 'Drag & drop or click to upload' : 'Drag & drop an image, or click to select')}
-      </Typography>
-      {!compact && (
-        <Typography variant="caption" color="text.disabled">
-          PNG, JPG, GIF, WebP
-        </Typography>
-      )}
-    </Box>
+          : (compact ? 'Drag & drop or click' : 'Drag & drop an image, or click to select')}
+      </p>
+      {!compact && <p className="text-xs text-muted-foreground/60 mt-1">PNG, JPG, GIF, WebP</p>}
+    </div>
   );
 }

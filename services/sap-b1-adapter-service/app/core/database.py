@@ -208,15 +208,54 @@ def infer_sql_type(py_sample: Any) -> str:
 
 
 def ensure_table(cur, schema: str, table: str, col_names: list, col_types: list):
-    """Ensure table exists, create if not"""
+    """Create table if it doesn't exist."""
     cur.execute("""
         SELECT 1 FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
     """, (schema, table))
-
     if not cur.fetchone():
         cols_sql = ", ".join(f"[{n}] {t}" for n, t in zip(col_names, col_types))
         cur.execute(f"CREATE TABLE [{schema}].[{table}] ({cols_sql});")
+
+
+def _ensure_columns(cur, schema: str, table: str, col_names: list, col_types: list):
+    """Add any columns that are missing from an existing table (append-mode schema evolution)."""
+    for col, typ in zip(col_names, col_types):
+        cur.execute(
+            "SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(?) AND name = ?",
+            (f"[{schema}].[{table}]", col),
+        )
+        if not cur.fetchone():
+            cur.execute(f"ALTER TABLE [{schema}].[{table}] ADD [{col}] {typ} NULL")
+            logger.info("Added column [%s] to %s.%s", col, schema, table)
+
+
+def create_placeholder_table(schema: str, table: str):
+    """
+    Create an empty destination table immediately when a query is defined,
+    so the table is visible in the DB before the first sync runs.
+    No-op if the table already exists or dst_table is EXCEL.
+    """
+    if not table or table.strip().upper() == "EXCEL":
+        return
+    conn = connect_sql()
+    try:
+        cur = conn.cursor()
+        cur.execute(f"""
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = '{schema}' AND TABLE_NAME = '{table}'
+            )
+            CREATE TABLE [{schema}].[{table}] ([_placeholder] BIT NULL)
+        """)
+        conn.commit()
+        logger.info("Placeholder table created: [%s].[%s]", schema, table)
+    except Exception:
+        conn.rollback()
+        logger.exception("Failed to create placeholder table %s.%s", schema, table)
+        raise
+    finally:
+        conn.close()
 
 
 def insert_rows(cur, schema: str, table: str, col_names: list, rows: list):
@@ -277,12 +316,19 @@ def write_to_sql_server(
         # Infer SQL types from first row
         col_types = [infer_sql_type(v) for v in rows_matrix[0]]
 
-        # Ensure table exists
-        ensure_table(cur, schema, table, col_names, col_types)
-
-        # Replace or append
         if load_mode == "replace":
-            cur.execute(f"TRUNCATE TABLE [{schema}].[{table}]")
+            # Drop and recreate — always gives the exact schema from SAP B1,
+            # also removes the _placeholder column created at query-definition time.
+            cur.execute(f"""
+                IF OBJECT_ID('[{schema}].[{table}]', 'U') IS NOT NULL
+                DROP TABLE [{schema}].[{table}]
+            """)
+            cols_sql = ", ".join(f"[{n}] {t}" for n, t in zip(col_names, col_types))
+            cur.execute(f"CREATE TABLE [{schema}].[{table}] ({cols_sql});")
+        else:
+            # Append — create if missing, then add any new columns from SAP B1.
+            ensure_table(cur, schema, table, col_names, col_types)
+            _ensure_columns(cur, schema, table, col_names, col_types)
 
         # Insert
         insert_rows(cur, schema, table, col_names, rows_matrix)

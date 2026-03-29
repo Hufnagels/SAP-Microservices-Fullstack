@@ -1,8 +1,9 @@
 import type { ComponentType, ReactNode } from 'react';
+import { Map } from 'lucide-react';
 import Landing from '../pages/Landing';
 import SignIn from '../pages/SignIn';
 import MapPage from '../pages/map/MapPage';
-import MapIcon from '@mui/icons-material/Map';
+import UserAccount from '../pages/users/UserAccount';
 
 export interface RouteConfig {
   path: string;
@@ -15,9 +16,10 @@ export interface RouteConfig {
 }
 
 export const routes: RouteConfig[] = [
-  { path: '/',        element: Landing,     protected: false },
-  { path: '/signin',  element: SignIn,       protected: false },
-  { path: '/map',     element: MapPage,      protected: true, icon: <MapIcon />,    label: 'Map',         showInNav: true  },
+  { path: '/',        element: Landing,      protected: false },
+  { path: '/signin',  element: SignIn,        protected: false },
+  { path: '/map',     element: MapPage,       protected: true, icon: <Map className="h-4 w-4" />, label: 'Map',         showInNav: true },
+  { path: '/account', element: UserAccount,   protected: true, label: 'Account' },
 ];
 
 export function flattenRoutes(
