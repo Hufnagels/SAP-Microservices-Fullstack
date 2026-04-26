@@ -390,8 +390,10 @@ Creates `ReportingDB` and all tables: `logs_SyncJobs`, `wrk_QueryDef`, `wrk_Tabl
 **Option A — one-command startup (recommended):**
 
 ```bash
-./startup.sh          # starts everything in correct order
-./startup.sh --sim    # + OPC-UA simulator (fake S7-1500 PLC for dev/test)
+./startup.sh                 # starts everything in correct order
+./startup.sh --sim           # + OPC-UA simulator (fake S7-1500 PLC for dev/test)
+./startup.sh --feAll         # + all frontend dev servers (background)
+./startup.sh --sim --feAll   # both
 ```
 
 The script starts services in the right dependency order: databases → Traefik → auth-service → app services → monitoring.
@@ -458,12 +460,20 @@ make ps            # Show running containers (both stacks)
 
 ```bash
 make fe-install    # pnpm install (workspace — installs all frontends at once)
+make fe-all        # Start all frontend dev servers in background (all 6 at once)
 make fe-sap        # Start sap-sync-ui dev server (:5173)
 make fe-map        # Start sap-map-ui dev server (:5174)
 make fe-binpack    # Start binpack-ui dev server (:5175)
 make fe-admin      # Start admin-ui dev server (:5176)
 make fe-labeling   # Start live-labeling-ui dev server (:5178)
 make fe-s7         # Start s7-status-ui dev server (:5179)
+```
+
+Or launch everything with:
+
+```bash
+./startup.sh --feAll          # backend stack + all frontends
+./startup.sh --sim --feAll    # + OPC-UA simulator
 ```
 
 ### Local backend dev (no Docker)
@@ -520,6 +530,7 @@ All production traffic goes through Traefik at `http://localhost`.
 | Tool | URL | Default login |
 |---|---|---|
 | Traefik dashboard | http://localhost:8080 | — |
+| Portainer | http://localhost:9000 | pisti / Mancika *(set on first run)* |
 | RabbitMQ management | http://localhost:15672 | guest / guest |
 | Prometheus | http://localhost:9090 | — |
 | Grafana | http://localhost:3000 | admin / admin |

@@ -39,7 +39,8 @@ def load_node_defs() -> list[dict]:
         conn = psycopg2.connect(POSTGRES_URL)
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("""
-                SELECT id, name, node_id, type, sim_behavior, sim_min, sim_max, sim_period, is_active
+                SELECT id, name, node_id, type, sim_behavior, sim_min, sim_max, sim_period,
+                       sim_ramp, sim_plateau, sim_off, is_active
                 FROM node_definitions WHERE is_active = TRUE ORDER BY id
             """)
             rows = [dict(r) for r in cur.fetchall()]
@@ -56,7 +57,7 @@ def _default_nodes() -> list[dict]:
         {"id": 1, "name": "Temperature",      "node_id": "ns=2;i=2", "type": "process", "sim_behavior": "sine",        "sim_min": 18,  "sim_max": 32,  "sim_period": 60,  "is_active": True},
         {"id": 2, "name": "Pressure",          "node_id": "ns=2;i=3", "type": "process", "sim_behavior": "sine",        "sim_min": 0.8, "sim_max": 1.2, "sim_period": 90,  "is_active": True},
         {"id": 3, "name": "Flow Rate",         "node_id": "ns=2;i=4", "type": "process", "sim_behavior": "random_walk", "sim_min": 2,   "sim_max": 10,  "sim_period": 0,   "is_active": True},
-        {"id": 4, "name": "Working speed",     "node_id": "ns=2;i=5", "type": "process", "sim_behavior": "trapezoidal", "sim_min": 0,   "sim_max": 500, "sim_period": 120, "is_active": True},
+        {"id": 4, "name": "Working speed",     "node_id": "ns=2;i=5", "type": "process", "sim_behavior": "trapezoidal", "sim_min": 0,   "sim_max": 500, "sim_period": 30,  "sim_ramp": 15, "sim_plateau": 60, "sim_off": 30, "is_active": True},
         {"id": 5, "name": "High Temperature",  "node_id": "ns=2;i=7", "type": "alarm",   "sim_behavior": "threshold",   "sim_min": 0,   "sim_max": 1,   "sim_period": 0,   "is_active": True},
         {"id": 6, "name": "Low Pressure",      "node_id": "ns=2;i=8", "type": "alarm",   "sim_behavior": "threshold",   "sim_min": 0,   "sim_max": 1,   "sim_period": 0,   "is_active": True},
         {"id": 7, "name": "Running",           "node_id": "ns=2;i=9", "type": "alarm",   "sim_behavior": "constant",    "sim_min": 1,   "sim_max": 1,   "sim_period": 0,   "is_active": True},
@@ -106,20 +107,18 @@ class NodeSim:
             return round(lo + (hi - lo) * phase, 4)
 
         if b == "trapezoidal":
-            # sim_period = duration of ONE phase (s)
-            # Full cycle = 4 × sim_period
-            #   [0  → 1]: ramp up   lo → hi
-            #   [1  → 2]: plateau   hi
-            #   [2  → 3]: ramp down hi → lo
-            #   [3  → 4]: zero/off  lo
-            p = period          # one phase length in seconds
-            t_mod = self.t % (4 * p)
-            if t_mod < p:
-                return round(lo + (hi - lo) * (t_mod / p), 4)
-            elif t_mod < 2 * p:
+            # Asymmetric phases; fall back to equal quarters if columns absent
+            ramp    = float(self.cfg.get("sim_ramp")    or period)
+            plateau = float(self.cfg.get("sim_plateau") or period)
+            off     = float(self.cfg.get("sim_off")     or period)
+            total   = ramp + plateau + ramp + off
+            t_mod   = self.t % total
+            if t_mod < ramp:
+                return round(lo + (hi - lo) * (t_mod / ramp), 4)
+            elif t_mod < ramp + plateau:
                 return round(float(hi), 4)
-            elif t_mod < 3 * p:
-                return round(hi - (hi - lo) * ((t_mod - 2 * p) / p), 4)
+            elif t_mod < ramp + plateau + ramp:
+                return round(hi - (hi - lo) * ((t_mod - ramp - plateau) / ramp), 4)
             else:
                 return round(float(lo), 4)
 

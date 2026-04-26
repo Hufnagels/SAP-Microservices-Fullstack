@@ -421,6 +421,13 @@ class OPCUAPoller:
                 self._last_successful_read = time.time()
                 self._connected = True
 
+            except asyncio.CancelledError:
+                if not self._running:
+                    raise   # intentional stop via stop()
+                # asyncua internal task cancellation; treat as a connection error
+                logger.warning("Poll loop caught CancelledError — reconnecting")
+                self._connected = False
+                await self._safe_disconnect()
             except Exception as e:
                 self._consecutive_errors += 1
                 self._failed_reads += 1

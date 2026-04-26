@@ -297,6 +297,17 @@ services:
       postgres-labeling:
         condition: service_healthy
 
+  # ── Portainer — Docker GUI ────────────────────────────────────────────────
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: unless-stopped
+
   # ── Monitoring ────────────────────────────────────────────────────────────────
 
   prometheus:
@@ -342,6 +353,7 @@ services:
 volumes:
   postgres_opcua_data:
   rabbitmq_data:
+  portainer_data:
 
 networks:
   # db_net is owned by the infrastructure stack (infrastructure/mssql/docker-compose.yml).

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # ── MicroServices — Startup Script ────────────────────────────────────────
 # Starts the full stack step by step using Makefile targets.
-# Usage: 
-#       ./startup.sh          # full stack
-#       ./startup.sh --sim    # + OPC-UA simulator
+# Usage:
+#       ./startup.sh                    # full stack
+#       ./startup.sh --sim              # + OPC-UA simulator
+#       ./startup.sh --feAll            # + all frontend dev servers (background)
+#       ./startup.sh --sim --feAll      # both
 # Startup order:
 # 
 # 1. PostgreSQL DBs
@@ -17,7 +19,11 @@
 set -euo pipefail
 
 SIM=false
-for arg in "$@"; do [[ "$arg" == "--sim" ]] && SIM=true; done
+FE_ALL=false
+for arg in "$@"; do
+  [[ "$arg" == "--sim"   ]] && SIM=true
+  [[ "$arg" == "--feAll" ]] && FE_ALL=true
+done
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
@@ -41,10 +47,11 @@ wait_healthy "PostgreSQL instances" 8
 ok "Databases up"
 
 # ── Step 2: Core infrastructure ────────────────────────────────────────────────
-step "Starting Traefik gateway..."
-docker compose up -d traefik
+step "Starting Traefik gateway + Portainer..."
+docker compose up -d traefik portainer
 sleep 3
-ok "Traefik up → http://localhost:8080"
+ok "Traefik up    → http://localhost:8080"
+ok "Portainer up  → http://localhost:9000  (first run: create user pisti / Mancika)"
 
 # ── Step 3: Auth service ───────────────────────────────────────────────────────
 step "Starting auth-service..."
@@ -85,6 +92,19 @@ if $SIM; then
   ok "OPC-UA simulator up → opc.tcp://localhost:4840"
 fi
 
+# ── Step 7: Frontend dev servers (optional) ───────────────────────────────────
+if $FE_ALL; then
+  step "Starting all frontend dev servers (background)..."
+  (cd frontend/sap-sync-ui     && pnpm dev) &
+  (cd frontend/sap-map-ui      && pnpm dev) &
+  (cd frontend/binpack-ui      && pnpm dev) &
+  (cd frontend/admin-ui        && pnpm dev) &
+  (cd frontend/live-labeling-ui && pnpm dev) &
+  (cd frontend/s7-status-ui    && pnpm dev) &
+  sleep 3
+  ok "Frontend dev servers starting (may take a few seconds to be ready)"
+fi
+
 # ── Done ───────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -93,9 +113,19 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo ""
 echo -e "  Gateway (Traefik):   ${CYAN}http://localhost${NC}"
 echo -e "  Traefik dashboard:   ${CYAN}http://localhost:8080${NC}"
+echo -e "  Portainer:           ${CYAN}http://localhost:9000${NC}"
 echo -e "  Grafana:             ${CYAN}http://localhost:3000${NC}"
 echo -e "  InfluxDB:            ${CYAN}http://localhost:8086${NC}"
 echo ""
+if $FE_ALL; then
+echo -e "  Frontend dev servers (running in background):"
+echo -e "    SAP Sync UI:       ${CYAN}http://localhost:5173${NC}"
+echo -e "    SAP Map UI:        ${CYAN}http://localhost:5174${NC}"
+echo -e "    Binpack UI:        ${CYAN}http://localhost:5175${NC}"
+echo -e "    Admin UI:          ${CYAN}http://localhost:5176${NC}"
+echo -e "    Live Labeling UI:  ${CYAN}http://localhost:5178${NC}"
+echo -e "    S7 Status UI:      ${CYAN}http://localhost:5179${NC}"
+else
 echo -e "  Frontend dev servers (run separately):"
 echo -e "    SAP Sync UI:       ${CYAN}make fe-sap      ${NC} → http://localhost:5173"
 echo -e "    SAP Map UI:        ${CYAN}make fe-map      ${NC} → http://localhost:5174"
@@ -103,6 +133,7 @@ echo -e "    Binpack UI:        ${CYAN}make fe-binpack  ${NC} → http://localho
 echo -e "    Admin UI:          ${CYAN}make fe-admin    ${NC} → http://localhost:5176"
 echo -e "    Live Labeling UI:  ${CYAN}make fe-labeling ${NC} → http://localhost:5178"
 echo -e "    S7 Status UI:      ${CYAN}make fe-s7       ${NC} → http://localhost:5179"
+fi
 echo ""
 echo -e "  Status:              ${CYAN}make ps${NC}"
 echo -e "  Logs:                ${CYAN}make logs${NC}"

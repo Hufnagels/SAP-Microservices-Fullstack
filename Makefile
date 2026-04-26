@@ -62,6 +62,9 @@ up-labeling:
 up-opcua:
 	$(APP) up --build -d opcua-service
 
+up-portainer:
+	$(APP) up -d portainer
+
 up-influx:
 	$(APP) up -d influxdb
 
@@ -119,6 +122,15 @@ fe-labeling:
 fe-s7:
 	cd frontend/s7-status-ui && pnpm dev
 
+fe-all:
+	(cd frontend/sap-sync-ui      && pnpm dev) &
+	(cd frontend/sap-map-ui       && pnpm dev) &
+	(cd frontend/binpack-ui       && pnpm dev) &
+	(cd frontend/admin-ui         && pnpm dev) &
+	(cd frontend/live-labeling-ui && pnpm dev) &
+	(cd frontend/s7-status-ui     && pnpm dev) &
+	wait
+
 # Run services directly (no Docker) — use when Docker daemon is not available
 # PYTHONPATH=../.. makes `shared/` importable the same way the Dockerfile does
 # Ports: auth=8002, sap-b1-adapter=8003
@@ -148,5 +160,5 @@ ps:
 	@echo "=== App services ==="
 	$(APP) ps
 
-.PHONY: infra-up infra-down infra-reset infra-init up up-core up-sap up-binpack up-labeling up-opcua up-influx up-sim down down-all reset logs ps \
-        fe-install fe-sap fe-sap-dev fe-map fe-binpack fe-binpack-dev fe-admin fe-labeling fe-s7 dev-auth dev-sap dev-labeling dev-opcua
+.PHONY: infra-up infra-down infra-reset infra-init up up-core up-sap up-binpack up-labeling up-opcua up-portainer up-influx up-sim down down-all reset logs ps \
+        fe-install fe-sap fe-sap-dev fe-map fe-binpack fe-binpack-dev fe-admin fe-labeling fe-s7 fe-all dev-auth dev-sap dev-labeling dev-opcua

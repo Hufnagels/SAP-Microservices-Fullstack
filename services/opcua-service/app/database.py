@@ -49,6 +49,9 @@ def _init_schema():
                     sim_min      FLOAT        NOT NULL DEFAULT 0,
                     sim_max      FLOAT        NOT NULL DEFAULT 100,
                     sim_period   FLOAT        NOT NULL DEFAULT 30,
+                    sim_ramp     FLOAT,
+                    sim_plateau  FLOAT,
+                    sim_off      FLOAT,
                     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
                 )
             """)
@@ -58,6 +61,9 @@ def _init_schema():
                 ("sim_min",      "FLOAT NOT NULL DEFAULT 0"),
                 ("sim_max",      "FLOAT NOT NULL DEFAULT 100"),
                 ("sim_period",   "FLOAT NOT NULL DEFAULT 30"),
+                ("sim_ramp",     "FLOAT"),
+                ("sim_plateau",  "FLOAT"),
+                ("sim_off",      "FLOAT"),
             ]:
                 cur.execute(f"""
                     ALTER TABLE node_definitions ADD COLUMN IF NOT EXISTS {col} {typedef}
@@ -65,19 +71,21 @@ def _init_schema():
             cur.execute("SELECT COUNT(*) FROM node_definitions")
             if cur.fetchone()[0] == 0:
                 seeds = [
-                    # name, node_id (simulator numeric IDs), type, unit, description
+                    # name, node_id, type, unit, description, sim_behavior, sim_min, sim_max, sim_period, sim_ramp, sim_plateau, sim_off
                     # Real S7-1500: use ns=3;s="DataBlocksGlobal"."DB_ProcessData"."Variable"
-                    ("Temperature",      "ns=2;i=2", "process", "°C",   "Reactor temperature"),
-                    ("Pressure",         "ns=2;i=3", "process", "bar",  "Line pressure"),
-                    ("Flow Rate",        "ns=2;i=4", "process", "m³/h", "Process flow rate"),
-                    ("Setpoint",         "ns=2;i=5", "process", "°C",   "Temperature setpoint"),
-                    ("High Temperature", "ns=2;i=7", "alarm",   None,   "High temperature alarm"),
-                    ("Low Pressure",     "ns=2;i=8", "alarm",   None,   "Low pressure alarm"),
-                    ("Running",          "ns=2;i=9", "alarm",   None,   "Machine running state"),
+                    ("Temperature",      "ns=2;i=2", "process", "°C",    "Reactor temperature",    "sine",        18,  32,  60,  None, None, None),
+                    ("Pressure",         "ns=2;i=3", "process", "bar",   "Line pressure",           "sine",        0.8, 1.2, 90,  None, None, None),
+                    ("Flow Rate",        "ns=2;i=4", "process", "m³/h",  "Process flow rate",       "random_walk", 2,   10,  30,  None, None, None),
+                    ("Working speed",    "ns=2;i=5", "process", "m/min", "Working speed",           "trapezoidal", 0,   500, 30,  15,   60,   30),
+                    ("High Temperature", "ns=2;i=7", "alarm",   None,    "High temperature alarm",  "threshold",   0,   1,   0,   None, None, None),
+                    ("Low Pressure",     "ns=2;i=8", "alarm",   None,    "Low pressure alarm",      "threshold",   0,   1,   0,   None, None, None),
+                    ("Running",          "ns=2;i=9", "alarm",   None,    "Machine running state",   "constant",    1,   1,   0,   None, None, None),
                 ]
                 cur.executemany(
-                    """INSERT INTO node_definitions (name, node_id, type, unit, description)
-                       VALUES (%s, %s, %s, %s, %s)""",
+                    """INSERT INTO node_definitions
+                       (name, node_id, type, unit, description,
+                        sim_behavior, sim_min, sim_max, sim_period, sim_ramp, sim_plateau, sim_off)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     seeds,
                 )
     log.info("node_definitions table ready")
@@ -107,23 +115,26 @@ def get_node(id_: int) -> Optional[dict]:
 def create_node(name: str, node_id: str, type_: str, unit: Optional[str],
                 description: Optional[str], is_active: bool = True,
                 sim_behavior: str = "sine", sim_min: float = 0.0,
-                sim_max: float = 100.0, sim_period: float = 30.0) -> dict:
+                sim_max: float = 100.0, sim_period: float = 30.0,
+                sim_ramp: Optional[float] = None, sim_plateau: Optional[float] = None,
+                sim_off: Optional[float] = None) -> dict:
     with get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
                 """INSERT INTO node_definitions
                    (name, node_id, type, unit, description, is_active,
-                    sim_behavior, sim_min, sim_max, sim_period)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
+                    sim_behavior, sim_min, sim_max, sim_period, sim_ramp, sim_plateau, sim_off)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *""",
                 (name, node_id, type_, unit, description, is_active,
-                 sim_behavior, sim_min, sim_max, sim_period),
+                 sim_behavior, sim_min, sim_max, sim_period, sim_ramp, sim_plateau, sim_off),
             )
             return dict(cur.fetchone())
 
 
 def update_node(id_: int, **fields) -> Optional[dict]:
     allowed = {"name", "node_id", "type", "unit", "description", "is_active",
-               "sim_behavior", "sim_min", "sim_max", "sim_period"}
+               "sim_behavior", "sim_min", "sim_max", "sim_period",
+               "sim_ramp", "sim_plateau", "sim_off"}
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return None

@@ -54,10 +54,10 @@ if $STOP_SIM; then
   ok "OPC-UA simulator stopped"
 fi
 
-# ── Step 2: Monitoring stack ───────────────────────────────────────────────
-step "Stopping monitoring stack (Grafana, Prometheus, Loki, Promtail, InfluxDB)..."
-docker compose stop grafana promtail loki prometheus influxdb 2>/dev/null || true
-ok "Monitoring stack stopped"
+# ── Step 2: Monitoring stack + Portainer ──────────────────────────────────
+step "Stopping monitoring stack (Grafana, Prometheus, Loki, Promtail, InfluxDB, Portainer)..."
+docker compose stop grafana promtail loki prometheus influxdb portainer 2>/dev/null || true
+ok "Monitoring stack + Portainer stopped"
 
 # ── Step 3: App services ───────────────────────────────────────────────────
 step "Stopping app services..."

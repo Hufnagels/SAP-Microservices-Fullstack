@@ -123,6 +123,27 @@ def fetch_b1_rows(
                     raise RuntimeError(
                         f"SAP B1 rejected SQLQuery creation ({cr.status_code}): {b1_detail}"
                     )
+            elif sql_text:
+                # Query exists — update SqlText if it changed
+                existing_text = chk.json().get("SqlText", "")
+                if existing_text.strip() != sql_text.strip():
+                    log.info("Updating SQLQuery '%s' in SAP B1 (SQL changed)", sql_code)
+                    patch = s.patch(
+                        b1_url(f"/SQLQueries('{sql_code}')"),
+                        json={"SqlText": sql_text},
+                        verify=verify,
+                        timeout=30,
+                    )
+                    if not patch.ok:
+                        b1_detail = ""
+                        try:
+                            b1_detail = patch.json().get("error", {}).get("message", {}).get("value", patch.text)
+                        except Exception:
+                            b1_detail = patch.text
+                        log.error("SAP B1 update failed [%s]: %s", patch.status_code, b1_detail)
+                        raise RuntimeError(
+                            f"SAP B1 rejected SQLQuery update ({patch.status_code}): {b1_detail}"
+                        )
 
             # Execute query
             ex = s.post(b1_url(f"/SQLQueries('{sql_code}')/List"), json={}, verify=verify, timeout=120)

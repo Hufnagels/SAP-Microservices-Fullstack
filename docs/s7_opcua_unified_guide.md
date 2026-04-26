@@ -115,7 +115,7 @@ docker compose up -d opcua-service
 │  │   OPCUAPoller (500ms poll) │  │
 │  │   asyncua client           │  │
 │  └─────────┬──────────────────┘  │
-│            │ REST API             │
+│            │ REST API            │
 │  ┌─────────▼──────────────────┐  │
 │  │ s7-status-ui (port 5179)   │  │
 │  │   React + MUI dashboard    │  │
