@@ -51,7 +51,7 @@ step "Starting Traefik gateway + Portainer..."
 docker compose up -d traefik portainer
 sleep 3
 ok "Traefik up    → http://localhost:8080"
-ok "Portainer up  → http://localhost:9000  (first run: create user pisti / Mancika)"
+ok "Portainer up  → http://localhost:9000  (first run: create user )"
 
 # ── Step 3: Auth service ───────────────────────────────────────────────────────
 step "Starting auth-service..."

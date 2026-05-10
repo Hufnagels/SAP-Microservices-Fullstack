@@ -1,10 +1,10 @@
 USE master;
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'pisti')
+IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = N'<ADMINUSER>')
 BEGIN
-    CREATE LOGIN [pisti]
-        WITH PASSWORD = 'Mancika1972',
+    CREATE LOGIN [<ADMINUSER>]
+        WITH PASSWORD = 'xxxxxxxx',
         CHECK_POLICY = ON,
         CHECK_EXPIRATION = ON;
 END
@@ -17,10 +17,10 @@ GO
 USE [ReportingDB];
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'pisti')
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'<ADMINUSER>')
 BEGIN
-    CREATE USER [pisti] FOR LOGIN [pisti];
-    ALTER ROLE db_owner ADD MEMBER [pisti];
+    CREATE USER [<ADMINUSER>] FOR LOGIN [<ADMINUSER>];
+    ALTER ROLE db_owner ADD MEMBER [<ADMINUSER>];
 END
 GO
 
@@ -173,12 +173,12 @@ GO
 -- SEED DATA  (idempotent — skipped if rows already exist)
 -- ============================================================
 
--- auth_User: default admin account  (password: Mancika1972)
-IF NOT EXISTS (SELECT 1 FROM dbo.auth_User WHERE Username = 'pisti')
+-- auth_User: default admin account  (password: xxxxxxxx) --- IGNORE ---
+IF NOT EXISTS (SELECT 1 FROM dbo.auth_User WHERE Username = '<ADMINUSER>')
     INSERT INTO dbo.auth_User (Username, PasswordHash, Role, IsActive)
     VALUES (
-        'pisti',
-        '$2b$12$KIXDwjBjcFa6e3e5R1N8ROefANT8p7C3ZqY2fL0kLw1Wx3TqQlQ7e',  -- bcrypt of Mancika1972
+        '<ADMINUSER>',
+        '$2b$12$KIXDwjBjcFa6e3e5R1N8ROefANT8p7C3ZqY2fL0kLw1Wx3TqQlQ7e',  -- bcrypt of xxxxxxxx
         'admin',
         1
     );
@@ -187,11 +187,11 @@ GO
 -- wrk_TableDesc: destination table catalogue
 MERGE dbo.wrk_TableDesc AS t
 USING (VALUES
-    ('SAP_BusinessPartners', 'pisti', 'Business partners synced from SAP B1 (CardCode, CardName, etc.)'),
-    ('SAP_SalesOrders',      'pisti', 'Open and closed sales orders from SAP B1 ORDR'),
-    ('SAP_OpenItems',        'pisti', 'Ageing open A/R items from SAP B1 OINV'),
-    ('SAP_Inventory',        'pisti', 'Current warehouse stock levels from SAP B1 OITW'),
-    ('SAP_PurchaseOrders',   'pisti', 'Purchase orders from SAP B1 OPOR')
+    ('SAP_BusinessPartners', '<ADMINUSER>', 'Business partners synced from SAP B1 (CardCode, CardName, etc.)'),
+    ('SAP_SalesOrders',      '<ADMINUSER>', 'Open and closed sales orders from SAP B1 ORDR'),
+    ('SAP_OpenItems',        '<ADMINUSER>', 'Ageing open A/R items from SAP B1 OINV'),
+    ('SAP_Inventory',        '<ADMINUSER>', 'Current warehouse stock levels from SAP B1 OITW'),
+    ('SAP_PurchaseOrders',   '<ADMINUSER>', 'Purchase orders from SAP B1 OPOR')
 ) AS s (table_name, owner, description)
 ON t.table_name = s.table_name
 WHEN NOT MATCHED THEN
@@ -207,7 +207,7 @@ INSERT INTO dbo.wrk_QueryDef
      is_active, created_by)
 SELECT s.query_name, s.base_table, s.description, s.service_name,
        s.sql_original, s.sql_b1_comp_base_query, s.sql_b1_comp_extra_options,
-       1, 'pisti'
+       1, '<ADMINUSER>'
 FROM (VALUES
     (
         'BusinessPartners_Full',
@@ -269,8 +269,8 @@ IF NOT EXISTS (SELECT 1 FROM dbo.logs_SyncJobs)
     VALUES
         (DATEADD(day,-1,SYSDATETIME()), DATEADD(day,-1,SYSDATETIME()), 'SUCCESS',
          'BusinessPartners_Full', 'SAP_BusinessPartners', 142,
-         '/sap/sync', 'pisti', 'sync'),
+         '/sap/sync', '<ADMINUSER>', 'sync'),
         (SYSDATETIME(), SYSDATETIME(), 'SUCCESS',
          'SalesOrders_Open', 'SAP_SalesOrders', 37,
-         '/sap/sync-async', 'pisti', 'async');
+         '/sap/sync-async', '<ADMINUSER>', 'async');
 GO

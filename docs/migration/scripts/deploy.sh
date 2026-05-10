@@ -1,7 +1,7 @@
 #!/bin/bash
 # Rsync the project to the LXC container at 10.63.10.111
 # Usage: ./scripts/deploy.sh [host]
-# Auth: pisti / Mancika (sudo). Root SSH login is disabled.
+# Auth: xxxx / xxxxxxxx (sudo). Root SSH login is disabled.
 set -e
 
 HOST="${1:-10.63.10.111}"
