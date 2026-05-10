@@ -895,7 +895,7 @@ docker compose restart grafana
 
 ## 11. Migration (macOS → Linux)
 
-See the full guide: [docs/MIGRATION.md](docs/MIGRATION.md)
+See the full guide: [docs/migration/MIGRATION_SUMMARY.md](docs/migration/MIGRATION_SUMMARY.md)
 
 **Recommended OS: Ubuntu 24.04 LTS** — best Docker CE support, 5-year LTS, official MS ODBC Driver 18 packages, largest ecosystem.
 

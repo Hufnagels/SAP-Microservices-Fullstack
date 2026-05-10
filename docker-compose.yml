@@ -1,6 +1,7 @@
 services:
   traefik:
     image: traefik:v3.3
+    restart: unless-stopped
     command:
       - --configfile=/etc/traefik/traefik.yml
     ports:
@@ -12,6 +13,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3-management
+    restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
@@ -25,6 +27,7 @@ services:
   # auth-service is the only consumer of this database.
   postgres-auth:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: auth_db
       POSTGRES_USER: postgres
@@ -39,6 +42,7 @@ services:
   # Each service connects to its own database within this instance.
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -54,6 +58,7 @@ services:
   # ── Services ──────────────────────────────────────────────────────────────────
 
   auth-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/auth-service/Dockerfile
@@ -70,6 +75,7 @@ services:
       - postgres-auth
 
   orders-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/orders-service/Dockerfile
@@ -80,6 +86,7 @@ services:
       - postgres
 
   inventory-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/inventory-service/Dockerfile
@@ -90,6 +97,7 @@ services:
       - postgres
 
   reporting-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/reporting-service/Dockerfile
@@ -101,6 +109,7 @@ services:
       - rabbitmq
 
   sensor-ingest-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/sensor-ingest-service/Dockerfile
@@ -113,6 +122,7 @@ services:
       - postgres
 
   sap-b1-adapter-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/sap-b1-adapter-service/Dockerfile
@@ -123,12 +133,23 @@ services:
       B1_USER: ${SAP_B1_USERNAME:-termelesig}
       B1_PASSWORD: ${SAP_B1_PASSWORD:-}
       VPN_BYPASS: ${VPN_BYPASS:-false}
+      VPN_CONFIG: /etc/vpn/brd.conf
+      VPN_TARGET_HOST: 172.22.248.4
+      VPN_TARGET_PORT: "50000"
+      VPN_CONNECT_TIMEOUT: "30"
+      VPN_IDLE_TTL: "300"
       DST_SERVER: ${DST_SQL_SERVER:-mssql_server,1433}
       DST_DB: ${DST_SQL_DB:-ReportingDB}
       DST_USER: ${DST_SQL_USER:-sa}
       DST_PASSWORD: ${DST_SQL_PASSWORD:-}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-256-bits-long}
       API_KEYS_JSON: ${SAP_API_KEYS_JSON:-{}}
+    cap_add:
+      - NET_ADMIN
+    # devices:
+    #   - /dev/net/tun      # uncomment after PVE tun=1 is enabled (see OVPN_Guide.md §12 note)
+    volumes:
+      - ./vpn:/etc/vpn:ro
     networks:
       - default
       - db_net
@@ -136,6 +157,7 @@ services:
   # ── Files DB — metadata for file-service; accessible to any service via postgres-files:5432 ──
   postgres-files:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: files_db
       POSTGRES_USER: postgres
@@ -151,6 +173,7 @@ services:
       retries: 10
 
   file-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/file-service/Dockerfile
@@ -167,6 +190,7 @@ services:
 
   postgres-maps:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: maps_db
       POSTGRES_USER: postgres
@@ -182,6 +206,7 @@ services:
       retries: 10
 
   maps-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/maps-service/Dockerfile
@@ -196,6 +221,7 @@ services:
   # ── InfluxDB — timeseries storage for OPC-UA data ────────────────────────────
   influxdb:
     image: influxdb:2.7
+    restart: unless-stopped
     ports:
       - "8086:8086"
     environment:
@@ -205,6 +231,8 @@ services:
       DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG:-compani}
       DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET:-opcua}
       DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:-my-super-secret-token}
+      # Store CLI config inside the data volume so it's wiped together with the db
+      INFLUX_CONFIGS_PATH: /var/lib/influxdb2/influx.configs
     volumes:
       - ./data/influxdb:/var/lib/influxdb2
 
@@ -225,6 +253,7 @@ services:
 
   postgres-opcua:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: opcua_db
       POSTGRES_USER: postgres
@@ -240,6 +269,7 @@ services:
       retries: 5
 
   opcua-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/opcua-service/Dockerfile
@@ -261,6 +291,7 @@ services:
       - postgres-opcua
 
   binpack-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/binpack-service/Dockerfile
@@ -269,6 +300,7 @@ services:
 
   postgres-labeling:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: labeling_db
       POSTGRES_USER: postgres
@@ -284,6 +316,7 @@ services:
       retries: 10
 
   labeling-service:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: services/labeling-service/Dockerfile
@@ -312,6 +345,7 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    restart: unless-stopped
     ports:
       - "9090:9090"
     volumes:
@@ -320,6 +354,7 @@ services:
 
   loki:
     image: grafana/loki:3.0.0
+    restart: unless-stopped
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -328,6 +363,7 @@ services:
 
   promtail:
     image: grafana/promtail:3.0.0
+    restart: unless-stopped
     volumes:
       - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
@@ -337,6 +373,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
@@ -349,6 +386,56 @@ services:
       - prometheus
       - loki
       - influxdb
+
+  # ── Frontend SPAs ─────────────────────────────────────────────────────────────
+
+  admin-ui:
+    build:
+      context: frontend/admin-ui
+      dockerfile: Dockerfile
+    ports:
+      - "5176:80"
+    restart: unless-stopped
+
+  sap-sync-ui:
+    build:
+      context: frontend/sap-sync-ui
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    restart: unless-stopped
+
+  sap-map-ui:
+    build:
+      context: frontend/sap-map-ui
+      dockerfile: Dockerfile
+    ports:
+      - "5174:80"
+    restart: unless-stopped
+
+  binpack-ui:
+    build:
+      context: frontend/binpack-ui
+      dockerfile: Dockerfile
+    ports:
+      - "5175:80"
+    restart: unless-stopped
+
+  live-labeling-ui:
+    build:
+      context: frontend/live-labeling-ui
+      dockerfile: Dockerfile
+    ports:
+      - "5178:80"
+    restart: unless-stopped
+
+  s7-status-ui:
+    build:
+      context: frontend/s7-status-ui
+      dockerfile: Dockerfile
+    ports:
+      - "5179:80"
+    restart: unless-stopped
 
 volumes:
   postgres_opcua_data:

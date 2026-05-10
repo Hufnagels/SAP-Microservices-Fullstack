@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.core import connect_sql, fetch_b1_rows, VPNConnectionError, create_placeholder_table
+from shared.python_common.vpn_manager import get_vpn_manager
 from app.core.sql_preprocessor import preprocess_sql
 from app import security
 
@@ -253,6 +254,7 @@ def preview_query(
     ),
 ):
     username = current_user.get("sub")
+    get_vpn_manager().ensure_connected()
     conn = connect_sql() if body.log_to_jobs else None
     job_id = None
     try:

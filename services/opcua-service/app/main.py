@@ -41,6 +41,7 @@ async def lifespan(app: FastAPI):
         security_mode=settings.opcua_security_mode,
         poll_interval_ms=settings.poll_interval_ms,
         influx=influx,
+        node_reload_fn=database.build_node_maps,
     )
     app.state.poller = poller
 

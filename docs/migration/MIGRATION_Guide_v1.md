@@ -1,4 +1,4 @@
-# Migration Guide — macOS → Linux Server
+# Migration Guide — macOS → Linux Server (2026. March 22.)
 
 ## Recommended OS: Ubuntu 24.04 LTS
 

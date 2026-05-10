@@ -10,7 +10,12 @@ http:
       headers:
         accessControlAllowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
         accessControlAllowHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
-        accessControlAllowOriginList: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://localhost:5177", "http://localhost:5178", "http://localhost:5179"]
+        accessControlAllowOriginList: [
+          "http://localhost:5173", "http://localhost:5174", "http://localhost:5175",
+          "http://localhost:5176", "http://localhost:5177", "http://localhost:5178", "http://localhost:5179",
+          "http://10.63.10.111:5173", "http://10.63.10.111:5174", "http://10.63.10.111:5175",
+          "http://10.63.10.111:5176", "http://10.63.10.111:5178", "http://10.63.10.111:5179"
+        ]
         accessControlMaxAge: 3600
         addVaryHeader: true
 

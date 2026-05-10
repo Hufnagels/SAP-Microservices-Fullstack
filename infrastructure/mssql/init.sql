@@ -168,3 +168,109 @@ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_wrk_QueryDef_base
         ADD CONSTRAINT FK_wrk_QueryDef_base_table
         FOREIGN KEY (base_table) REFERENCES dbo.wrk_TableDesc (table_name);
 GO
+
+-- ============================================================
+-- SEED DATA  (idempotent — skipped if rows already exist)
+-- ============================================================
+
+-- auth_User: default admin account  (password: Mancika1972)
+IF NOT EXISTS (SELECT 1 FROM dbo.auth_User WHERE Username = 'pisti')
+    INSERT INTO dbo.auth_User (Username, PasswordHash, Role, IsActive)
+    VALUES (
+        'pisti',
+        '$2b$12$KIXDwjBjcFa6e3e5R1N8ROefANT8p7C3ZqY2fL0kLw1Wx3TqQlQ7e',  -- bcrypt of Mancika1972
+        'admin',
+        1
+    );
+GO
+
+-- wrk_TableDesc: destination table catalogue
+MERGE dbo.wrk_TableDesc AS t
+USING (VALUES
+    ('SAP_BusinessPartners', 'pisti', 'Business partners synced from SAP B1 (CardCode, CardName, etc.)'),
+    ('SAP_SalesOrders',      'pisti', 'Open and closed sales orders from SAP B1 ORDR'),
+    ('SAP_OpenItems',        'pisti', 'Ageing open A/R items from SAP B1 OINV'),
+    ('SAP_Inventory',        'pisti', 'Current warehouse stock levels from SAP B1 OITW'),
+    ('SAP_PurchaseOrders',   'pisti', 'Purchase orders from SAP B1 OPOR')
+) AS s (table_name, owner, description)
+ON t.table_name = s.table_name
+WHEN NOT MATCHED THEN
+    INSERT (table_name, owner, description, is_active)
+    VALUES (s.table_name, s.owner, s.description, 1);
+GO
+
+-- wrk_QueryDef: pre-configured sync query definitions
+-- Insert only rows whose query_name does not already exist
+INSERT INTO dbo.wrk_QueryDef
+    (query_name, base_table, description, service_name,
+     sql_original, sql_b1_comp_base_query, sql_b1_comp_extra_options,
+     is_active, created_by)
+SELECT s.query_name, s.base_table, s.description, s.service_name,
+       s.sql_original, s.sql_b1_comp_base_query, s.sql_b1_comp_extra_options,
+       1, 'pisti'
+FROM (VALUES
+    (
+        'BusinessPartners_Full',
+        'SAP_BusinessPartners',
+        'All active business partners with address and contact info',
+        'sap-b1-adapter',
+        'SELECT T0.CardCode, T0.CardName, T0.CardType, T0.GroupCode, T0.Phone1, T0.E_Mail, T0.City, T0.Country, T0.Balance, T0.Active FROM OCRD T0 WHERE T0.Active = ''Y''',
+        'SELECT T0."CardCode", T0."CardName", T0."CardType", T0."GroupCode", T0."Phone1", T0."E_Mail", T0."City", T0."Country", T0."Balance", T0."Active" FROM OCRD T0 WHERE T0."Active" = ''Y''',
+        NULL
+    ),
+    (
+        'SalesOrders_Open',
+        'SAP_SalesOrders',
+        'Open sales orders with document total and delivery date',
+        'sap-b1-adapter',
+        'SELECT T0.DocNum, T0.DocDate, T0.CardCode, T0.CardName, T0.DocTotal, T0.DocCur, T0.DocDueDate, T0.NumAtCard FROM ORDR T0 WHERE T0.DocStatus = ''O''',
+        'SELECT T0."DocNum", T0."DocDate", T0."CardCode", T0."CardName", T0."DocTotal", T0."DocCur", T0."DocDueDate", T0."NumAtCard" FROM ORDR T0 WHERE T0."DocStatus" = ''O''',
+        NULL
+    ),
+    (
+        'OpenInvoices_Ageing',
+        'SAP_OpenItems',
+        'Open A/R invoices with days overdue (computed column)',
+        'sap-b1-adapter',
+        'SELECT T0.DocNum, T0.DocDate, T0.CardCode, T0.CardName, T0.DocTotal, T0.PaidToDate, T0.DocTotal - T0.PaidToDate AS OpenAmount, T0.DocDueDate FROM OINV T0 WHERE T0.DocStatus = ''O''',
+        'SELECT T0."DocNum", T0."DocDate", T0."CardCode", T0."CardName", T0."DocTotal", T0."PaidToDate", T0."DocTotal" - T0."PaidToDate" AS "OpenAmount", T0."DocDueDate" FROM OINV T0 WHERE T0."DocStatus" = ''O''',
+        '{"computed": ["OpenAmount"]}'
+    ),
+    (
+        'Inventory_Stock',
+        'SAP_Inventory',
+        'Current on-hand stock per item per warehouse',
+        'sap-b1-adapter',
+        'SELECT T0.ItemCode, T1.ItemName, T0.WhsCode, T0.OnHand, T0.IsCommited, T0.OnOrder FROM OITW T0 INNER JOIN OITM T1 ON T0.ItemCode = T1.ItemCode WHERE T0.OnHand <> 0',
+        'SELECT T0."ItemCode", T1."ItemName", T0."WhsCode", T0."OnHand", T0."IsCommited", T0."OnOrder" FROM OITW T0 INNER JOIN OITM T1 ON T0."ItemCode" = T1."ItemCode" WHERE T0."OnHand" <> 0',
+        NULL
+    ),
+    (
+        'PurchaseOrders_Open',
+        'SAP_PurchaseOrders',
+        'Open purchase orders awaiting delivery',
+        'sap-b1-adapter',
+        'SELECT T0.DocNum, T0.DocDate, T0.CardCode, T0.CardName, T0.DocTotal, T0.DocCur, T0.DocDueDate FROM OPOR T0 WHERE T0.DocStatus = ''O''',
+        'SELECT T0."DocNum", T0."DocDate", T0."CardCode", T0."CardName", T0."DocTotal", T0."DocCur", T0."DocDueDate" FROM OPOR T0 WHERE T0."DocStatus" = ''O''',
+        NULL
+    )
+) AS s (query_name, base_table, description, service_name,
+        sql_original, sql_b1_comp_base_query, sql_b1_comp_extra_options)
+WHERE NOT EXISTS (
+    SELECT 1 FROM dbo.wrk_QueryDef WHERE query_name = s.query_name
+);
+GO
+
+-- logs_SyncJobs: two seed entries showing expected row shape (no auto-rows on real runs)
+IF NOT EXISTS (SELECT 1 FROM dbo.logs_SyncJobs)
+    INSERT INTO dbo.logs_SyncJobs
+        (started_at, finished_at, status, source_query, target_table,
+         rows_written, endpoint, username, sync_type)
+    VALUES
+        (DATEADD(day,-1,SYSDATETIME()), DATEADD(day,-1,SYSDATETIME()), 'SUCCESS',
+         'BusinessPartners_Full', 'SAP_BusinessPartners', 142,
+         '/sap/sync', 'pisti', 'sync'),
+        (SYSDATETIME(), SYSDATETIME(), 'SUCCESS',
+         'SalesOrders_Open', 'SAP_SalesOrders', 37,
+         '/sap/sync-async', 'pisti', 'async');
+GO

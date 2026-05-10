@@ -11,7 +11,9 @@
 
 services:
   mssql:
-    image: mcr.microsoft.com/azure-sql-edge:latest
+    # Use standard SQL Server 2022 on Linux (x86/amd64 LXC).
+    # azure-sql-edge was for ARM dev (M1 Mac) — it breaks in LXC due to capability restrictions.
+    image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: mssql_server
     environment:
       ACCEPT_EULA: "Y"
@@ -25,12 +27,11 @@ services:
       - db_net
     restart: unless-stopped
     healthcheck:
-      # azure-sql-edge has no sqlcmd; use a TCP probe via bash
-      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/1433' 2>/dev/null && echo ok || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -No -C > /dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 45s
 
 networks:
   db_net:

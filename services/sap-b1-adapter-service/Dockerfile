@@ -5,6 +5,7 @@ FROM python:3.11-slim
 # - msodbcsql18 supports Debian 12 and ARM64 (Mac M1/M2/M3)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl gpg apt-transport-https ca-certificates unixodbc-dev \
+        openvpn \
     && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
         | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
     && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list \

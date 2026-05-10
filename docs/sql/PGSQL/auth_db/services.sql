@@ -4,7 +4,7 @@
 -- https://tableplus.com/
 --
 -- Database: auth_db
--- Generation Time: 2026-03-16 20:35:58.1080
+-- Generation Time: 2026-05-09 21:04:21.1190
 -- -------------------------------------------------------------
 
 
@@ -42,4 +42,5 @@ INSERT INTO "public"."services" ("id", "name", "pascal_name", "description", "se
 (7, 'inventory-service', 'InventoryService', 'Inventory management service (stub)', 'http://inventory-service:8000', 8000, 'make up', '/inventory', 't', '2026-03-14 18:13:20.758088+00'),
 (8, 'reporting-service', 'ReportingService', 'Reporting and analytics service (stub)', 'http://reporting-service:8000', 8000, 'make up', '/reporting', 't', '2026-03-14 18:13:20.758088+00'),
 (9, 'sensor-ingest-service', 'SensorIngestService', 'Sensor data ingest and event pipeline (stub)', 'http://sensor-ingest-service:8000', 8000, 'make up', '/sensor', 't', '2026-03-14 18:13:20.758088+00'),
-(10, 'maps-service', 'MapsService', 'Geospatial / Leaflet map data service (stub)', 'http://maps-service:8000', 8000, 'make up', '/maps', 't', '2026-03-14 18:13:20.758088+00');
+(10, 'maps-service', 'MapsService', 'Geospatial / Leaflet map data service (stub)', 'http://maps-service:8000', 8000, 'make up', '/maps', 't', '2026-03-14 18:13:20.758088+00'),
+(11, 'opcua-service', 'OpcuaService', 'Siemens S7-1500 OPC-UA polling, InfluxDB timeseries persistence', 'http://opcua-service:8000', 8000, 'make up-opcua', '/opcua', 't', '2026-03-20 09:56:02.372075+00');

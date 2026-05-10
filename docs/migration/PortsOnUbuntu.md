@@ -1,9 +1,10 @@
 # MicroServices — Ports, DBs & Credentials Reference
 
 > All passwords come from `.env` (or the defaults shown below).
+> 
 > Internal ports (inside Docker) are always `5432` for Postgres and `8000` for services.
-> **Host ports** are what you connect to from the dev machine.
-
+> 
+> **Host ports** are what you connect to from the dev machine. --> **LXC**: 10.63.10.111
 ---
 
 ## Backend Services
@@ -75,32 +76,32 @@
 
 ```bash
 # Auth DB
-psql -h localhost -p 5433 -U postgres -d auth_db
+psql -h 10.63.10.111 -p 5433 -U postgres -d auth_db
 
 # Shared DB (orders / inventory / reporting / events)
-psql -h localhost -p 5434 -U postgres
+psql -h 10.63.10.111 -p 5434 -U postgres
 
 # Files DB
-psql -h localhost -p 5436 -U postgres -d files_db
+psql -h 10.63.10.111 -p 5436 -U postgres -d files_db
 
 # Maps DB
-psql -h localhost -p 5435 -U postgres -d maps_db
+psql -h 10.63.10.111 -p 5435 -U postgres -d maps_db
 
 # OPC-UA DB
-psql -h localhost -p 5438 -U postgres -d opcua_db
+psql -h 10.63.10.111 -p 5438 -U postgres -d opcua_db
 
 # Labeling DB
-psql -h localhost -p 5437 -U postgres -d labeling_db
+psql -h 10.63.10.111 -p 5437 -U postgres -d labeling_db
 
 # InfluxDB UI
-open http://localhost:8086
+open http://10.63.10.111:8086
 
 # Grafana
-open http://localhost:3000
+open http://10.63.10.111:3000
 
 # Traefik dashboard
-open http://localhost:8080
+open http://10.63.10.111:8080
 
 # RabbitMQ management
-open http://localhost:15672
+open http://10.63.10.111:15672
 ```

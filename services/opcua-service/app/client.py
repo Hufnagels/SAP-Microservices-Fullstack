@@ -142,13 +142,17 @@ class OPCUAPoller:
     def __init__(self, endpoint_url: str, username: Optional[str] = None,
                  password: Optional[str] = None, security_mode: str = "None",
                  poll_interval_ms: int = 500,
-                 influx: Optional[InfluxWriter] = None):
+                 influx: Optional[InfluxWriter] = None,
+                 node_reload_fn=None):
         self.endpoint_url = endpoint_url
         self.username = username or None
         self.password = password or None
         self.security_mode = security_mode
         self.poll_interval = poll_interval_ms / 1000.0
         self._influx = influx
+        self._node_reload_fn = node_reload_fn
+        self._node_reload_interval = 15.0
+        self._last_node_reload = 0.0
 
         self.client: Optional[Client] = None
         self._connected = False
@@ -385,6 +389,15 @@ class OPCUAPoller:
         while self._running:
             loop_start = time.time()
             try:
+                # Hot-reload node maps from DB every 15 s (picks up simulator sync-back)
+                if self._node_reload_fn and (loop_start - self._last_node_reload >= self._node_reload_interval):
+                    try:
+                        proc, alarms = self._node_reload_fn()
+                        self.reload_nodes(proc, alarms)
+                    except Exception as e:
+                        logger.warning(f"Node map reload failed: {e}")
+                    self._last_node_reload = loop_start
+
                 if not await self._ensure_connected():
                     await asyncio.sleep(self.poll_interval)
                     continue

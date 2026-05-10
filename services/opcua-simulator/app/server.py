@@ -167,9 +167,10 @@ async def main():
     db_process = await objects.add_object(idx, "DB_ProcessData")
     db_alarms  = await objects.add_object(idx, "DB_Alarms")
 
-    # Create OPC-UA variable nodes for each process node
+    # Create OPC-UA variable nodes and sync the real node_ids back to DB
     opc_nodes: dict[int, Any] = {}
     sims: dict[int, NodeSim] = {}
+    node_id_updates: list[tuple[str, int]] = []
 
     for nd in process_defs:
         mid = (nd["sim_min"] + nd["sim_max"]) / 2
@@ -177,14 +178,30 @@ async def main():
         await opc_node.set_writable()
         opc_nodes[nd["id"]] = opc_node
         sims[nd["id"]] = NodeSim(cfg=nd)
-        log.info(f"  Process node: {nd['name']}  [{nd['sim_min']}–{nd['sim_max']}]  behavior={nd['sim_behavior']}")
+        actual_id = opc_node.nodeid.to_string()
+        node_id_updates.append((actual_id, nd["id"]))
+        log.info(f"  Process node: {nd['name']}  [{nd['sim_min']}–{nd['sim_max']}]  behavior={nd['sim_behavior']}  node_id={actual_id}")
 
     for nd in alarm_defs:
         opc_node = await db_alarms.add_variable(idx, nd["name"], False, ua.VariantType.Boolean)
         await opc_node.set_writable()
         opc_nodes[nd["id"]] = opc_node
         sims[nd["id"]] = NodeSim(cfg=nd)
-        log.info(f"  Alarm node:   {nd['name']}  behavior={nd['sim_behavior']}")
+        actual_id = opc_node.nodeid.to_string()
+        node_id_updates.append((actual_id, nd["id"]))
+        log.info(f"  Alarm node:   {nd['name']}  behavior={nd['sim_behavior']}  node_id={actual_id}")
+
+    # Write actual node IDs back to DB so opcua-service always reads the right nodes
+    try:
+        conn = psycopg2.connect(POSTGRES_URL)
+        with conn.cursor() as cur:
+            for actual_id, db_id in node_id_updates:
+                cur.execute("UPDATE node_definitions SET node_id = %s WHERE id = %s", (actual_id, db_id))
+        conn.commit()
+        conn.close()
+        log.info(f"Synced {len(node_id_updates)} node IDs back to DB")
+    except Exception as e:
+        log.warning(f"Could not sync node IDs to DB: {e}")
 
     interval   = INTERVAL_MS / 1000.0
     reload_every = 15.0   # re-read DB config every 15 s

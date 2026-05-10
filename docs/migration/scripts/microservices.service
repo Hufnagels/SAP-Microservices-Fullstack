@@ -1,0 +1,26 @@
+[Unit]
+Description=BRD MicroServices Stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/microservices
+
+# MSSQL infrastructure first — it owns the db_net network
+ExecStartPre=/usr/bin/docker compose -f /opt/microservices/infrastructure/mssql/docker-compose.yml up -d
+ExecStartPre=/bin/sleep 15
+
+# Main stack
+ExecStart=/usr/bin/docker compose -f /opt/microservices/docker-compose.yml up -d
+
+# On stop: bring down main stack (MSSQL left running to preserve data)
+ExecStop=/usr/bin/docker compose -f /opt/microservices/docker-compose.yml down
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

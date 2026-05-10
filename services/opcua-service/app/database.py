@@ -68,15 +68,30 @@ def _init_schema():
                 cur.execute(f"""
                     ALTER TABLE node_definitions ADD COLUMN IF NOT EXISTS {col} {typedef}
                 """)
+            # Fix wrong node IDs seeded by older versions (process nodes were off by 1)
+            _NODE_ID_FIXES = {
+                "Temperature":  ("ns=2;i=2", "ns=2;i=3"),
+                "Pressure":     ("ns=2;i=3", "ns=2;i=4"),
+                "Flow Rate":    ("ns=2;i=4", "ns=2;i=5"),
+                "Working speed":("ns=2;i=5", "ns=2;i=6"),
+            }
+            for name, (old_id, new_id) in _NODE_ID_FIXES.items():
+                cur.execute(
+                    "UPDATE node_definitions SET node_id = %s WHERE name = %s AND node_id = %s",
+                    (new_id, name, old_id),
+                )
+
             cur.execute("SELECT COUNT(*) FROM node_definitions")
             if cur.fetchone()[0] == 0:
                 seeds = [
                     # name, node_id, type, unit, description, sim_behavior, sim_min, sim_max, sim_period, sim_ramp, sim_plateau, sim_off
+                    # asyncua auto-assigns: ns=2;i=1=DB_ProcessData obj, ns=2;i=2=DB_Alarms obj,
+                    # then process vars i=3..6, alarm vars i=7..9
                     # Real S7-1500: use ns=3;s="DataBlocksGlobal"."DB_ProcessData"."Variable"
-                    ("Temperature",      "ns=2;i=2", "process", "°C",    "Reactor temperature",    "sine",        18,  32,  60,  None, None, None),
-                    ("Pressure",         "ns=2;i=3", "process", "bar",   "Line pressure",           "sine",        0.8, 1.2, 90,  None, None, None),
-                    ("Flow Rate",        "ns=2;i=4", "process", "m³/h",  "Process flow rate",       "random_walk", 2,   10,  30,  None, None, None),
-                    ("Working speed",    "ns=2;i=5", "process", "m/min", "Working speed",           "trapezoidal", 0,   500, 30,  15,   60,   30),
+                    ("Temperature",      "ns=2;i=3", "process", "°C",    "Reactor temperature",    "sine",        18,  32,  60,  None, None, None),
+                    ("Pressure",         "ns=2;i=4", "process", "bar",   "Line pressure",           "sine",        0.8, 1.2, 90,  None, None, None),
+                    ("Flow Rate",        "ns=2;i=5", "process", "m³/h",  "Process flow rate",       "random_walk", 2,   10,  30,  None, None, None),
+                    ("Working speed",    "ns=2;i=6", "process", "m/min", "Working speed",           "trapezoidal", 0,   500, 30,  15,   60,   30),
                     ("High Temperature", "ns=2;i=7", "alarm",   None,    "High temperature alarm",  "threshold",   0,   1,   0,   None, None, None),
                     ("Low Pressure",     "ns=2;i=8", "alarm",   None,    "Low pressure alarm",      "threshold",   0,   1,   0,   None, None, None),
                     ("Running",          "ns=2;i=9", "alarm",   None,    "Machine running state",   "constant",    1,   1,   0,   None, None, None),
