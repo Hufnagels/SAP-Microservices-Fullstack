@@ -1,5 +1,5 @@
 [Unit]
-Description=BRD MicroServices Stack
+Description=MicroServices Stack
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target

@@ -3,7 +3,7 @@
 # ssh root@10.63.10.111 'bash -s' < scripts/lxc-setup.sh
 set -e
 
-echo "=== BRD MicroServices — LXC bootstrap ==="
+echo "=== MicroServices — LXC bootstrap ==="
 
 # Detect distro
 if [ -f /etc/debian_version ]; then

@@ -1,10 +1,10 @@
 #!/bin/bash
 # Generate a local CA + self-signed server cert for Traefik TLS
 # Usage: ./scripts/gen-cert.sh [domain]
-# Default domain: brd.internal
+# Default domain: <COMPANY>.internal
 set -e
 
-DOMAIN="${1:-brd.internal}"
+DOMAIN="${1:-<COMPANY>.internal}"
 OUT="$(dirname "$0")/../api-gateway/traefik/certs"
 mkdir -p "$OUT"
 
@@ -13,13 +13,13 @@ echo "Generating CA + cert for: $DOMAIN"
 # Local CA
 openssl genrsa -out "$OUT/ca.key" 4096
 openssl req -x509 -new -nodes -key "$OUT/ca.key" -sha256 -days 3650 \
-  -subj "/CN=BRD Internal CA/O=BRD" \
+  -subj "/CN=<COMPANY> Internal CA/O=<COMPANY>" \
   -out "$OUT/ca.crt"
 
 # Server key + CSR
 openssl genrsa -out "$OUT/server.key" 2048
 openssl req -new -key "$OUT/server.key" \
-  -subj "/CN=$DOMAIN/O=BRD" \
+  -subj "/CN=$DOMAIN/O=<COMPANY>" \
   -out "$OUT/server.csr"
 
 # Sign with CA (includes SAN)

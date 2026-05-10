@@ -5,8 +5,8 @@
 set -e
 
 HOST="${1:-10.63.10.111}"
-USER="pisti"
-PASS="Mancika"
+USER=xxxx
+PASS=xxxx
 STAGING="~/ms-staging"
 DEST="/opt/microservices"
 SRC="$(cd "$(dirname "$0")/../../.." && pwd)/"
