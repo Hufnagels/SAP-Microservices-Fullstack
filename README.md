@@ -530,7 +530,7 @@ All production traffic goes through Traefik at `http://localhost`.
 | Tool | URL | Default login |
 |---|---|---|
 | Traefik dashboard | http://localhost:8080 | — |
-| Portainer | http://localhost:9000 | pisti / Mancika *(set on first run)* |
+| Portainer | http://localhost:9000 | xxxx / xxxxxxxxx *(set on first run)* |
 | RabbitMQ management | http://localhost:15672 | guest / guest |
 | Prometheus | http://localhost:9090 | — |
 | Grafana | http://localhost:3000 | admin / admin |
