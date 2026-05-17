@@ -43,7 +43,7 @@ This happens after a fresh LXC setup or if `data/` was accidentally deleted.
 ### 3a. Recreate data directories with correct ownership
 
 ```bash
-sudo mkdir -p /opt/microservices/data/{pg-auth,pg-shared,pg-files,pg-maps,pg-labeling,pg-opcua,influxdb,prometheus,loki,grafana,mssql}
+sudo mkdir -p /opt/microservices/data/{pg-auth,pg-shared,pg-files,pg-maps,pg-labeling,pg-opcua,pg-lot,influxdb,prometheus,loki,grafana,mssql}
 sudo mkdir -p /opt/microservices/files
 
 # Fix ownership — each service runs as a specific non-root UID
@@ -157,6 +157,7 @@ done
 | binpack-ui | `http://10.63.10.111:5175` |
 | live-labeling-ui | `http://10.63.10.111:5178` |
 | s7-status-ui | `http://10.63.10.111:5179` |
+| lotgen-ui | `http://10.63.10.111:5177` |
 | Grafana | `http://10.63.10.111:3000` |
 | Traefik dashboard | `http://10.63.10.111:8080` |
 | RabbitMQ management | `http://10.63.10.111:15672` |
