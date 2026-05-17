@@ -94,6 +94,12 @@ http:
       entryPoints: [web]
       middlewares: [cors, strip-labeling]
 
+    lotgen:
+      rule: "PathPrefix(`/lot`)"
+      service: lotgen-service
+      entryPoints: [web]
+      middlewares: [cors]
+
   services:
     auth-service:
       loadBalancer:
@@ -149,3 +155,8 @@ http:
       loadBalancer:
         servers:
           - url: "http://labeling-service:8000"
+
+    lotgen-service:
+      loadBalancer:
+        servers:
+          - url: "http://lotgen-service:8000"

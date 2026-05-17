@@ -437,6 +437,47 @@ services:
       - "5179:80"
     restart: unless-stopped
 
+  # ── LOTGEN — Sarzs / LOT generáló és nyomtató ────────────────────────────────
+
+  postgres-lot:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lot_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./data/pg-lot:/var/lib/postgresql/data
+    ports:
+      - "5440:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lot_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  lotgen-service:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: services/lotgen-service/Dockerfile
+    environment:
+      APP_NAME: lotgen-service
+      POSTGRES_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres-lot:5432/lot_db
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-at-least-256-bits-long}
+      LABELING_URL: http://labeling-service:8000
+    depends_on:
+      postgres-lot:
+        condition: service_healthy
+
+  lotgen-ui:
+    build:
+      context: frontend/lotgen-ui
+      dockerfile: Dockerfile
+    ports:
+      - "5177:80"
+    restart: unless-stopped
+
 volumes:
   postgres_opcua_data:
   rabbitmq_data:

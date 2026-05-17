@@ -21,6 +21,7 @@
 | `sap-b1-adapter-service` | `/sap` | 8000 | MSSQL (external) | **1433** | `$DST_SQL_DB` (ReportingDB) | `$DST_SQL_USER` (sa) | `$DST_SQL_PASSWORD` |
 | `binpack-service` | `/binpack` | 8000 | — | — | — | — | — |
 | `labeling-service` | `/labeling` | 8000 | `postgres-labeling` | **5437** | `labeling_db` | `postgres` | `$POSTGRES_PASSWORD` |
+| `lotgen-service` | `/lot` | 8000 | `postgres-lot` | **5440** | `lot_db` | `postgres` | `$POSTGRES_PASSWORD` |
 
 ---
 
@@ -34,6 +35,7 @@
 | `admin-ui` | **5176** | `/auth`, `/files` |
 | `live-labeling-ui` | **5178** | `/auth`, `/labeling` |
 | `s7-status-ui` | **5179** | `/auth`, `/opcua` |
+| `lotgen-ui` | **5177** | `/auth`, `/lot` |
 
 ---
 
@@ -91,6 +93,9 @@ psql -h localhost -p 5438 -U postgres -d opcua_db
 
 # Labeling DB
 psql -h localhost -p 5437 -U postgres -d labeling_db
+
+# LOT DB
+psql -h localhost -p 5440 -U postgres -d lot_db
 
 # InfluxDB UI
 open http://localhost:8086

@@ -11,7 +11,7 @@ from .database import init_db, get_db, LabelDesignTemplate
 
 load_dotenv()
 
-PRINTER_IP   = "10.63.94.107" # os.getenv("PRINTER_IP",   "10.63.94.107")
+PRINTER_IP   = os.getenv("PRINTER_IP", "10.63.94.107")
 PRINTER_PORT = int(os.getenv("PRINTER_PORT", 9100))
 
 app = FastAPI(
