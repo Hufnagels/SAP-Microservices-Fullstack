@@ -12,7 +12,7 @@ router = APIRouter(prefix="/lot", tags=["lot"])
 
 VALID_PREFIXES  = db.VALID_PREFIXES
 VALID_FORMATS   = {"YYYYMMDD", "YYMMDD", "YYMM", "YYYYWW", "none"}
-VALID_SIZES     = {"70x37", "80x50", "102x51", "102x76", "102x152"}
+VALID_SIZES     = {"70x37", "80x50", "105x48"}
 
 
 # ── Request / Response models ─────────────────────────────────────────────────
