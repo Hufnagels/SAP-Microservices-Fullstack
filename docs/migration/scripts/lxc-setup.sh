@@ -40,7 +40,7 @@ usermod -aG docker pisti 2>/dev/null || true
 
 # Deployment directory structure
 mkdir -p /opt/microservices
-mkdir -p /opt/microservices/data/{pg-auth,pg-shared,pg-files,pg-maps,pg-labeling,pg-opcua,influxdb,prometheus,loki,grafana}
+mkdir -p /opt/microservices/data/{pg-auth,pg-shared,pg-files,pg-maps,pg-labeling,pg-opcua,pg-lot,influxdb,prometheus,loki,grafana}
 mkdir -p /opt/microservices/files
 chmod -R 755 /opt/microservices
 

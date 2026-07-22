@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 
-const AUTH_URL = '/auth'  // relative — nginx proxies /auth/* to Traefik → auth-service
+const AUTH_URL = '/auth'
 const TOKEN_KEY = 'lotgen_token'
 const USER_KEY  = 'lotgen_user'
 

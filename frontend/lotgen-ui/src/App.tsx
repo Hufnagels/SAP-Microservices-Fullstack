@@ -8,15 +8,20 @@ import { LoginPage }    from '@/components/auth/LoginPage'
 import { UserMenu }     from '@/components/auth/UserMenu'
 import { useLotStore }  from '@/hooks/useLotStore'
 import { useAuth }      from '@/hooks/useAuth'
+import { useI18n }      from '@/i18n'
+import type { Locale }  from '@/i18n'
 import type { LotItem } from '@/types'
 import { Tag } from 'lucide-react'
+
+const LOCALE_LABELS: Record<Locale, string> = { hu: 'HU', en: 'EN', de: 'DE' }
 
 export default function App() {
   const auth  = useAuth()
   const store = useLotStore(auth.getToken(), auth.logout)
-  const [printingId,     setPrintingId]     = useState<string | null>(null)
-  const [selectedItem,   setSelectedItem]   = useState<LotItem | null>(null)
-  const [prevCounter,    setPrevCounter]    = useState<number>(1)
+  const { locale, setLocale, t, tf } = useI18n()
+  const [printingId,   setPrintingId]   = useState<string | null>(null)
+  const [selectedItem, setSelectedItem] = useState<LotItem | null>(null)
+  const [prevCounter,  setPrevCounter]  = useState<number>(1)
 
   if (!auth.isAuthenticated) {
     return (
@@ -42,12 +47,12 @@ export default function App() {
       })
       if (res.ok) {
         store.markPrinted(item.id)
-        toast.success(`Nyomtatva: ${item.lotNumber}`)
+        toast.success(tf('toastPrinted', item.lotNumber))
       } else {
-        toast.error(`Nyomtatási hiba: HTTP ${res.status}`)
+        toast.error(tf('toastPrintError', res.status))
       }
-    } catch (err) {
-      toast.error('A nyomtatóhoz nem sikerült csatlakozni')
+    } catch {
+      toast.error(t('toastPrinterUnreachable'))
     } finally {
       setPrintingId(null)
     }
@@ -58,9 +63,9 @@ export default function App() {
     setPrevCounter(store.counter)
     try {
       const batch = await store.generate()
-      toast.success(`${batch.length} szám generálva`)
+      toast.success(tf('toastGenerated', batch.length))
     } catch {
-      toast.error('Generálás sikertelen')
+      toast.error(t('toastGenerateFailed'))
     }
   }
 
@@ -68,12 +73,12 @@ export default function App() {
     setPrevCounter(store.counter)
     try {
       const batch = await store.generate()
-      toast.success(`${batch.length} szám generálva — nyomtatás indul...`)
+      toast.success(tf('toastGeneratedPrint', batch.length))
       for (const item of batch) {
         await printItem(item)
       }
     } catch {
-      toast.error('Generálás sikertelen')
+      toast.error(t('toastGenerateFailed'))
     }
   }
 
@@ -85,7 +90,7 @@ export default function App() {
   const handlePrintAll = async () => {
     const pending = store.items.filter(i => !i.printed)
     if (!pending.length) return
-    toast.info(`${pending.length} elem nyomtatása...`)
+    toast.info(tf('toastPrintingItems', pending.length))
     for (const item of pending) {
       await printItem(item)
     }
@@ -97,10 +102,29 @@ export default function App() {
       <header className="border-b bg-card sticky top-0 z-10">
         <div className="max-w-[1280px] mx-auto px-6 h-14 flex items-center gap-3">
           <Tag className="h-5 w-5 text-amber" />
-          <h1 className="font-semibold text-sm tracking-tight">Sarzs / LOT gereláló és nyomtató alkalzazás</h1>
+          <h1 className="font-semibold text-sm tracking-tight">{t('appTitle')}</h1>
           <div className="ml-auto flex items-center gap-4">
+
+            {/* Language switcher */}
+            <div className="flex items-center gap-0.5">
+              {(Object.keys(LOCALE_LABELS) as Locale[]).map(loc => (
+                <button
+                  key={loc}
+                  onClick={() => setLocale(loc)}
+                  className={[
+                    'text-[11px] font-bold px-2 py-1 rounded transition-colors',
+                    locale === loc
+                      ? 'bg-amber-500 text-white'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                  ].join(' ')}
+                >
+                  {LOCALE_LABELS[loc]}
+                </button>
+              ))}
+            </div>
+
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
-              <span>Számláló:</span>
+              <span>{t('counterLabel')}</span>
               <span className="font-semibold text-foreground">{String(store.counter).padStart(6, '0')}</span>
             </div>
             <div className="border-l pl-4">
@@ -130,6 +154,7 @@ export default function App() {
             <PreviewCard
               previewLot={store.previewLot}
               lotConfig={store.lotConfig}
+              labelSize={store.printerConfig.labelSize}
               counter={store.counter}
               quantity={store.quantity}
               onQuantityChange={store.setQuantity}

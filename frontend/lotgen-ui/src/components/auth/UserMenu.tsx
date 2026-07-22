@@ -5,15 +5,8 @@ import {
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { UsersModal } from './UsersModal'
+import { useI18n } from '@/i18n'
 import type { AuthUser } from '@/hooks/useAuth'
-
-const ROLE_LABELS: Record<string, string> = {
-  superadmin: 'Superadmin',
-  admin:      'Admin',
-  operator:   'Operátor',
-  viewer:     'Néző',
-  worker:     'Dolgozó',
-}
 
 interface Props {
   user:     AuthUser
@@ -22,8 +15,20 @@ interface Props {
 }
 
 export function UserMenu({ user, token, onLogout }: Props) {
+  const { t } = useI18n()
   const [usersOpen, setUsersOpen] = useState(false)
   const isAdmin = user.role === 'admin' || user.role === 'superadmin'
+
+  const roleLabel = (role: string) => {
+    switch (role) {
+      case 'superadmin': return t('roleSuperadmin')
+      case 'admin':      return t('roleAdmin')
+      case 'operator':   return t('roleOperator')
+      case 'viewer':     return t('roleViewer')
+      case 'worker':     return t('roleWorker')
+      default:           return role
+    }
+  }
 
   return (
     <>
@@ -35,7 +40,7 @@ export function UserMenu({ user, token, onLogout }: Props) {
             </div>
             <div className="hidden sm:flex flex-col items-start leading-none">
               <span className="text-xs font-medium">{user.username}</span>
-              <span className="text-[10px] text-muted-foreground">{ROLE_LABELS[user.role] ?? user.role}</span>
+              <span className="text-[10px] text-muted-foreground">{roleLabel(user.role)}</span>
             </div>
           </button>
         </DropdownMenuTrigger>
@@ -43,7 +48,7 @@ export function UserMenu({ user, token, onLogout }: Props) {
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuLabel className="font-normal">
             <p className="text-sm font-medium">{user.username}</p>
-            <p className="text-xs text-muted-foreground">{ROLE_LABELS[user.role] ?? user.role}</p>
+            <p className="text-xs text-muted-foreground">{roleLabel(user.role)}</p>
           </DropdownMenuLabel>
 
           {isAdmin && (
@@ -51,7 +56,7 @@ export function UserMenu({ user, token, onLogout }: Props) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setUsersOpen(true)}>
                 <Users className="mr-2 h-4 w-4" />
-                Felhasználók
+                {t('users')}
               </DropdownMenuItem>
             </>
           )}
@@ -59,7 +64,7 @@ export function UserMenu({ user, token, onLogout }: Props) {
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onLogout} className="text-destructive focus:text-destructive">
             <LogOut className="mr-2 h-4 w-4" />
-            Kijelentkezés
+            {t('logout')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

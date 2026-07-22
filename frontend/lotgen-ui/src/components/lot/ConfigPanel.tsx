@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { RotateCcw } from 'lucide-react'
 import type { LotConfig, PrinterConfig, DateFormat, Separator as SepType, LabelSize } from '@/types'
 import { LABEL_SIZES } from '@/types'
+import { useI18n } from '@/i18n'
 
 interface Props {
   lotConfig:            LotConfig
@@ -26,16 +27,18 @@ export function ConfigPanel({
   onLotConfigChange, onPrinterConfigChange,
   onCounterChange, onCounterReset,
 }: Props) {
+  const { t, tf } = useI18n()
+
   return (
     <aside className="flex flex-col gap-3 w-[240px] shrink-0">
 
       {/* ── Format ── */}
       <Card>
-        <CardHeader><CardTitle>Formátum</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('format')}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
 
           <div className="space-y-1">
-            <Label>Előtag (prefix)</Label>
+            <Label>{t('prefix')}</Label>
             <Select
               value={lotConfig.prefix}
               onValueChange={v => onLotConfigChange({ prefix: v })}
@@ -51,7 +54,7 @@ export function ConfigPanel({
           </div>
 
           <div className="space-y-1">
-            <Label>Dátum</Label>
+            <Label>{t('date')}</Label>
             <Select
               value={lotConfig.dateFormat}
               onValueChange={v => onLotConfigChange({ dateFormat: v as DateFormat })}
@@ -61,51 +64,51 @@ export function ConfigPanel({
                 <SelectItem value="YYYYMMDD">YYYYMMDD — 20250504</SelectItem>
                 <SelectItem value="YYMMDD">YYMMDD — 250504</SelectItem>
                 <SelectItem value="YYMM">YYMM — 2505</SelectItem>
-                <SelectItem value="YYYYWW">YYYYWW — hétszám</SelectItem>
-                <SelectItem value="none">Nincs dátum</SelectItem>
+                <SelectItem value="YYYYWW">YYYYWW — {t('dateWeekNumber')}</SelectItem>
+                <SelectItem value="none">{t('noDate')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
-            <Label>Elválasztó</Label>
+            <Label>{t('separator')}</Label>
             <Select
               value={lotConfig.separator === '' ? 'none' : lotConfig.separator}
               onValueChange={v => onLotConfigChange({ separator: (v === 'none' ? '' : v) as SepType })}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="-">Kötőjel  ( - )</SelectItem>
-                <SelectItem value="/">Perjel  ( / )</SelectItem>
-                <SelectItem value="_">Aláhúzás  ( _ )</SelectItem>
-                <SelectItem value="none">Nincs</SelectItem>
+                <SelectItem value="-">{t('hyphen')}</SelectItem>
+                <SelectItem value="/">{t('slash')}</SelectItem>
+                <SelectItem value="_">{t('underscore')}</SelectItem>
+                <SelectItem value="none">{t('none')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
-            <Label>Sorszám jegyek</Label>
+            <Label>{t('seqDigits')}</Label>
             <Select
               value={String(lotConfig.seqDigits)}
               onValueChange={v => onLotConfigChange({ seqDigits: Number(v) })}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="3">3 jegy — 001</SelectItem>
-                <SelectItem value="4">4 jegy — 0001</SelectItem>
-                <SelectItem value="5">5 jegy — 00001</SelectItem>
-                <SelectItem value="6">6 jegy — 000001</SelectItem>
+                <SelectItem value="3">{tf('seqDigitsOption', 3, '001')}</SelectItem>
+                <SelectItem value="4">{tf('seqDigitsOption', 4, '0001')}</SelectItem>
+                <SelectItem value="5">{tf('seqDigitsOption', 5, '00001')}</SelectItem>
+                <SelectItem value="6">{tf('seqDigitsOption', 6, '000001')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="cfg-suffix">Utótag (opcionális)</Label>
+            <Label htmlFor="cfg-suffix">{t('suffix')}</Label>
             <Input
               id="cfg-suffix"
               value={lotConfig.suffix}
               onChange={e => onLotConfigChange({ suffix: e.target.value })}
-              placeholder="pl. -A"
+              placeholder={t('suffixPlaceholder')}
               className="font-mono"
             />
           </div>
@@ -116,7 +119,7 @@ export function ConfigPanel({
 
       {/* ── Printer ── */}
       <Card>
-        <CardHeader><CardTitle>Nyomtató</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('printer')}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
 
           <div className="space-y-1">
@@ -130,7 +133,7 @@ export function ConfigPanel({
           </div>
 
           <div className="space-y-1">
-            <Label>Cimke méret</Label>
+            <Label>{t('labelSize')}</Label>
             <Select
               value={printerConfig.labelSize}
               onValueChange={v => onPrinterConfigChange({ labelSize: v as LabelSize })}
@@ -147,7 +150,7 @@ export function ConfigPanel({
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="cfg-copies">Példányszám</Label>
+            <Label htmlFor="cfg-copies">{t('copies')}</Label>
             <Input
               id="cfg-copies"
               type="number"
@@ -163,10 +166,10 @@ export function ConfigPanel({
 
       {/* ── Counter ── */}
       <Card>
-        <CardHeader><CardTitle>Számláló</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('counterLabel').replace(':', '')}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="cfg-counter">Aktuális érték</Label>
+            <Label htmlFor="cfg-counter">{t('currentValue')}</Label>
             <Input
               id="cfg-counter"
               type="number"
@@ -183,7 +186,7 @@ export function ConfigPanel({
             onClick={onCounterReset}
           >
             <RotateCcw className="h-3.5 w-3.5 mr-2" />
-            Visszaállítás 1-re
+            {t('resetTo1')}
           </Button>
         </CardContent>
       </Card>

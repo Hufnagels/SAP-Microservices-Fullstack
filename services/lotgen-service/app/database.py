@@ -65,11 +65,25 @@ def _create_tables():
 
 
 def get_counter(prefix: str) -> int:
+    from datetime import date
+    today = date.today()
     with get_conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT counter FROM lot_counters WHERE prefix = %s", (prefix,))
+            cur.execute(
+                "SELECT counter, updated_at FROM lot_counters WHERE prefix = %s",
+                (prefix,),
+            )
             row = cur.fetchone()
-            return row[0] if row else 1
+            if not row:
+                return 1
+            counter, updated_at = row
+            if updated_at.year != today.year or updated_at.month != today.month:
+                cur.execute(
+                    "UPDATE lot_counters SET counter = 1, updated_at = NOW() WHERE prefix = %s",
+                    (prefix,),
+                )
+                return 1
+            return counter
 
 
 def set_counter(prefix: str, value: int):

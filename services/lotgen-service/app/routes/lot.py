@@ -71,11 +71,18 @@ def generate(req: GenerateRequest, user: dict = Depends(get_current_user)):
     with db.get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT counter FROM lot_counters WHERE prefix = %s FOR UPDATE",
+                "SELECT counter, updated_at FROM lot_counters WHERE prefix = %s FOR UPDATE",
                 (req.prefix,),
             )
             row = cur.fetchone()
-            start = row[0] if row else 1
+            if not row:
+                start = 1
+            else:
+                counter, updated_at = row
+                if updated_at.year != today.year or updated_at.month != today.month:
+                    start = 1   # new month → restart from 0001
+                else:
+                    start = counter
 
         records = []
         for i in range(req.quantity):
@@ -127,6 +134,25 @@ def generate(req: GenerateRequest, user: dict = Depends(get_current_user)):
                 inserted.append(dict(cur2.fetchone()))
 
     return {"items": inserted, "next_counter": next_counter}
+
+
+@router.get("/last")
+def last_per_prefix(_: dict = Depends(get_current_user)):
+    """Return the most recently generated lot number for each valid prefix."""
+    result: dict[str, str | None] = {}
+    with db.get_conn() as conn:
+        with conn.cursor() as cur:
+            for prefix in sorted(VALID_PREFIXES):
+                cur.execute("""
+                    SELECT lot_number, generated_at
+                    FROM lot_history
+                    WHERE prefix = %s
+                    ORDER BY generated_at DESC
+                    LIMIT 1
+                """, (prefix,))
+                row = cur.fetchone()
+                result[prefix] = row[0] if row else None
+    return result
 
 
 @router.get("/history")

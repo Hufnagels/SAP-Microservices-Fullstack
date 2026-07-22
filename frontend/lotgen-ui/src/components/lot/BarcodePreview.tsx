@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'react'
 import JsBarcode from 'jsbarcode'
 
 interface Props {
-  value: string
+  value:     string
   className?: string
+  height?:   number
 }
 
-export function BarcodePreview({ value, className }: Props) {
+export function BarcodePreview({ value, className, height = 64 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
@@ -15,7 +16,7 @@ export function BarcodePreview({ value, className }: Props) {
       JsBarcode(svgRef.current, value, {
         format:       'CODE128',
         width:        2,
-        height:       64,
+        height,
         displayValue: false,
         margin:       0,
         background:   '#ffffff',

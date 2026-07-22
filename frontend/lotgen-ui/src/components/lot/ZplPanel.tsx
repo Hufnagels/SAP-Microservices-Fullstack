@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Copy, X } from 'lucide-react'
 import { toast } from 'sonner'
 import type { LotItem } from '@/types'
+import { useI18n } from '@/i18n'
 
 interface Props {
   item:    LotItem | null
@@ -10,13 +11,15 @@ interface Props {
 }
 
 export function ZplPanel({ item, onClose }: Props) {
+  const { t } = useI18n()
+
   if (!item) return null
 
   const handleCopy = () => {
     navigator.clipboard.writeText(item.zpl).then(() => {
-      toast.success('ZPL kód vágólapra másolva')
+      toast.success(t('zplCopied'))
     }).catch(() => {
-      toast.error('Másolás nem sikerült')
+      toast.error(t('copyFailed'))
     })
   }
 
@@ -25,13 +28,13 @@ export function ZplPanel({ item, onClose }: Props) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>ZPL kód</CardTitle>
+            <CardTitle>{t('zplCode')}</CardTitle>
             <p className="text-xs text-muted-foreground font-mono mt-1">{item.lotNumber}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleCopy}>
               <Copy className="h-3.5 w-3.5 mr-1.5" />
-              Másolás
+              {t('copy')}
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
               <X className="h-4 w-4" />

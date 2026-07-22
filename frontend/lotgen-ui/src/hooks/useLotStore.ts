@@ -3,7 +3,7 @@ import type { LotConfig, PrinterConfig, LotItem, LabelSize } from '@/types'
 import { formatLotNumber } from '@/lib/lot'
 import { generateZPL } from '@/lib/zpl'
 
-const API = ''   // relative — nginx proxies /lot/* to Traefik → lotgen-service
+const API = ''
 
 const DEFAULT_LOT_CONFIG: LotConfig = {
   prefix:     'TM1',
@@ -26,16 +26,9 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
   const [quantity,      setQuantity]      = useState(1)
   const [items,         setItems]         = useState<LotItem[]>([])
 
-  // Stable refs for values that must not recreate callbacks
-  const tokenRef          = useRef(token)
+  // Stable ref for the unauthorized callback
   const onUnauthorizedRef = useRef(onUnauthorized)
-  useEffect(() => { tokenRef.current          = token          }, [token])
   useEffect(() => { onUnauthorizedRef.current = onUnauthorized }, [onUnauthorized])
-
-  const headers = useCallback((): Record<string, string> => ({
-    'Content-Type': 'application/json',
-    ...(tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}),
-  }), [])
 
   const guardedFetch = useCallback(async (url: string, init: RequestInit): Promise<Response> => {
     const res = await fetch(url, init)
@@ -45,12 +38,15 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
 
   // ── counter ───────────────────────────────────────────────────────────────────
   const fetchCounter = useCallback(async (prefix: string) => {
-    if (!tokenRef.current) return
+    const tok = localStorage.getItem('lotgen_token')
+    if (!tok) return
     try {
-      const res = await guardedFetch(`${API}/lot/counter/${prefix}`, { headers: headers() })
+      const res = await guardedFetch(`${API}/lot/counter/${prefix}`, {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      })
       if (res.ok) setCounter((await res.json()).counter)
     } catch { /* backend unreachable */ }
-  }, [headers, guardedFetch])
+  }, [guardedFetch])
 
   // Re-fetch whenever prefix changes OR when token becomes available (after login)
   useEffect(() => {
@@ -62,11 +58,12 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
 
   // ── generate — reads state directly so values are always current ──────────────
   const generate = useCallback(async (): Promise<LotItem[]> => {
-    if (!tokenRef.current) return []
+    const tok = localStorage.getItem('lotgen_token')
+    if (!tok) throw new Error('Nincs bejelentkezve')
 
     const res = await guardedFetch(`${API}/lot/generate`, {
       method:  'POST',
-      headers: headers(),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
       body: JSON.stringify({
         prefix:      lotConfig.prefix,
         date_format: lotConfig.dateFormat,
@@ -95,41 +92,48 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
     setItems(prev => [...batch, ...prev])
     setCounter(next_counter)
     return batch
-  }, [headers, guardedFetch, lotConfig, quantity, printerConfig.labelSize])
+  }, [guardedFetch, lotConfig, quantity, printerConfig.labelSize])
 
   // ── other actions ─────────────────────────────────────────────────────────────
   const markPrinted = useCallback(async (id: string) => {
     setItems(prev => prev.map(it => it.id === id ? { ...it, printed: true } : it))
+    const tok = localStorage.getItem('lotgen_token')
+    if (!tok) return
     try {
-      await guardedFetch(`${API}/lot/${id}/printed`, { method: 'PUT', headers: headers() })
+      await guardedFetch(`${API}/lot/${id}/printed`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+      })
     } catch { /* non-critical */ }
-  }, [headers, guardedFetch])
+  }, [guardedFetch])
 
   const clearItems = useCallback(() => setItems([]), [])
 
   const resetCounter = useCallback(async () => {
     setCounter(1)
-    if (!tokenRef.current) return
+    const tok = localStorage.getItem('lotgen_token')
+    if (!tok) return
     try {
       await guardedFetch(`${API}/lot/counter/${lotConfig.prefix}`, {
         method:  'PUT',
-        headers: headers(),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
         body:    JSON.stringify({ value: 1 }),
       })
     } catch { /* non-critical */ }
-  }, [headers, guardedFetch, lotConfig.prefix])
+  }, [guardedFetch, lotConfig.prefix])
 
   const restoreCounter = useCallback(async (value: number) => {
     setCounter(value)
-    if (!tokenRef.current) return
+    const tok = localStorage.getItem('lotgen_token')
+    if (!tok) return
     try {
       await guardedFetch(`${API}/lot/counter/${lotConfig.prefix}`, {
         method:  'PUT',
-        headers: headers(),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
         body:    JSON.stringify({ value }),
       })
     } catch { /* non-critical */ }
-  }, [headers, guardedFetch, lotConfig.prefix])
+  }, [guardedFetch, lotConfig.prefix])
 
   const updateLotConfig = useCallback((partial: Partial<LotConfig>) => {
     setLotConfig(prev => ({ ...prev, ...partial }))

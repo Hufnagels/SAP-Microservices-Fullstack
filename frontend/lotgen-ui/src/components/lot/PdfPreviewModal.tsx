@@ -6,18 +6,21 @@ import {
 import { Button } from '@/components/ui/button'
 import { Download, X } from 'lucide-react'
 import type { PdfResult } from '@/lib/printPDF'
+import { useI18n } from '@/i18n'
 
 interface Props {
-  result:    PdfResult | null
-  itemCount: number
-  onConfirm: () => void
-  onCancel:  () => void
+  result:       PdfResult | null
+  itemCount:    number
+  perPage:      number
+  templateName: string
+  onConfirm:    () => void
+  onCancel:     () => void
 }
 
-export function PdfPreviewModal({ result, itemCount, onConfirm, onCancel }: Props) {
+export function PdfPreviewModal({ result, itemCount, perPage, templateName, onConfirm, onCancel }: Props) {
+  const { t, tf } = useI18n()
   const open = !!result
 
-  // Revoke blob URL on unmount or when result changes
   const prevUrl = useRef<string | null>(null)
   useEffect(() => {
     if (prevUrl.current && prevUrl.current !== result?.previewUrl) {
@@ -26,14 +29,14 @@ export function PdfPreviewModal({ result, itemCount, onConfirm, onCancel }: Prop
     prevUrl.current = result?.previewUrl ?? null
   }, [result?.previewUrl])
 
-  const pages = result ? Math.ceil(itemCount / 24) : 0
+  const pages = result ? Math.ceil(itemCount / perPage) : 0
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onCancel() }}>
       <DialogContent className="max-w-3xl w-full">
         <DialogHeader>
           <DialogTitle>
-            PDF előnézet — {itemCount} cimke · {pages} oldal · Avery 3474 (A4, 3×8)
+            {t('pdfPreview')} — {tf('pdfInfo', itemCount, pages)} · {templateName}
           </DialogTitle>
         </DialogHeader>
 
@@ -42,18 +45,18 @@ export function PdfPreviewModal({ result, itemCount, onConfirm, onCancel }: Prop
             src={result.previewUrl}
             className="w-full rounded border bg-gray-100"
             style={{ height: '60vh', minHeight: 400 }}
-            title="PDF előnézet"
+            title={t('pdfPreview')}
           />
         )}
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onCancel}>
             <X className="h-4 w-4 mr-1.5" />
-            Mégse — generált számok törlése
+            {t('cancelClearNumbers')}
           </Button>
           <Button onClick={onConfirm}>
             <Download className="h-4 w-4 mr-1.5" />
-            PDF letöltés
+            {t('downloadPdf')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input  } from '@/components/ui/input'
 import { Label  } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useI18n } from '@/i18n'
 
 const AUTH_URL = 'http://localhost/auth'
 
@@ -17,15 +18,7 @@ interface User {
   name:     string
   email:    string
   role:     Role
-  status:   string   // "active" | "inactive"
-}
-
-const ROLE_LABELS: Record<Role, string> = {
-  superadmin: 'Superadmin',
-  admin:      'Admin',
-  operator:   'Operátor',
-  viewer:     'Néző',
-  worker:     'Dolgozó',
+  status:   string
 }
 
 const ROLE_COLORS: Record<Role, string> = {
@@ -37,14 +30,15 @@ const ROLE_COLORS: Record<Role, string> = {
 }
 
 interface Props {
-  open:     boolean
-  onClose:  () => void
-  token:    string
+  open:    boolean
+  onClose: () => void
+  token:   string
 }
 
 const emptyForm = { username: '', password: '', name: '', email: '', role: 'viewer' as Role }
 
 export function UsersModal({ open, onClose, token }: Props) {
+  const { t, tf } = useI18n()
   const [users,    setUsers]    = useState<User[]>([])
   const [loading,  setLoading]  = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
@@ -54,6 +48,16 @@ export function UsersModal({ open, onClose, token }: Props) {
   const [error,    setError]    = useState<string | null>(null)
 
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+
+  const roleLabel = (role: Role) => {
+    switch (role) {
+      case 'superadmin': return t('roleSuperadmin')
+      case 'admin':      return t('roleAdmin')
+      case 'operator':   return t('roleOperator')
+      case 'viewer':     return t('roleViewer')
+      case 'worker':     return t('roleWorker')
+    }
+  }
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -100,7 +104,7 @@ export function UsersModal({ open, onClose, token }: Props) {
       }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        setError(body.detail ?? 'Hiba történt')
+        setError(body.detail ?? t('errorOccurred'))
         return
       }
       setShowForm(false)
@@ -111,7 +115,7 @@ export function UsersModal({ open, onClose, token }: Props) {
   }
 
   const handleDelete = async (u: User) => {
-    if (!confirm(`Töröljük: ${u.username}?`)) return
+    if (!confirm(tf('deleteConfirm', u.username))) return
     await fetch(`${AUTH_URL}/users/${u.id}`, { method: 'DELETE', headers })
     fetchUsers()
   }
@@ -128,7 +132,7 @@ export function UsersModal({ open, onClose, token }: Props) {
     <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Felhasználók kezelése</DialogTitle>
+          <DialogTitle>{t('userManagement')}</DialogTitle>
         </DialogHeader>
 
         {showForm ? (
@@ -136,28 +140,28 @@ export function UsersModal({ open, onClose, token }: Props) {
             <div className="grid grid-cols-2 gap-3">
               {!editUser && (
                 <div className="space-y-1 col-span-2 sm:col-span-1">
-                  <Label>Felhasználónév</Label>
+                  <Label>{t('username')}</Label>
                   <Input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} className="bg-white" />
                 </div>
               )}
               <div className="space-y-1 col-span-2 sm:col-span-1">
-                <Label>{editUser ? 'Új jelszó (hagyható üresen)' : 'Jelszó'}</Label>
+                <Label>{editUser ? t('newPassword') : t('password')}</Label>
                 <Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="bg-white" />
               </div>
               <div className="space-y-1 col-span-2 sm:col-span-1">
-                <Label>Név</Label>
+                <Label>{t('name')}</Label>
                 <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="bg-white" />
               </div>
               <div className="space-y-1 col-span-2 sm:col-span-1">
-                <Label>E-mail</Label>
+                <Label>{t('email')}</Label>
                 <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="bg-white" />
               </div>
               <div className="space-y-1 col-span-2 sm:col-span-1">
-                <Label>Szerepkör</Label>
+                <Label>{t('role')}</Label>
                 <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v as Role }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {ROLES.map(r => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+                    {ROLES.map(r => <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -166,9 +170,9 @@ export function UsersModal({ open, onClose, token }: Props) {
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <div className="flex gap-2 justify-end pt-2">
-              <Button variant="outline" onClick={() => setShowForm(false)}>Mégse</Button>
+              <Button variant="outline" onClick={() => setShowForm(false)}>{t('cancel')}</Button>
               <Button onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : (editUser ? 'Mentés' : 'Létrehozás')}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : (editUser ? t('save') : t('create'))}
               </Button>
             </div>
           </div>
@@ -177,7 +181,7 @@ export function UsersModal({ open, onClose, token }: Props) {
             <div className="flex justify-end">
               <Button size="sm" onClick={openCreate}>
                 <UserPlus className="h-4 w-4 mr-1.5" />
-                Új felhasználó
+                {t('newUser')}
               </Button>
             </div>
 
@@ -195,7 +199,7 @@ export function UsersModal({ open, onClose, token }: Props) {
                       <p className="text-xs text-muted-foreground">{u.username}{u.email ? ` · ${u.email}` : ''}</p>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[u.role]}`}>
-                      {ROLE_LABELS[u.role]}
+                      {roleLabel(u.role)}
                     </span>
                     <Select
                       value={u.status}
@@ -205,14 +209,14 @@ export function UsersModal({ open, onClose, token }: Props) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="active" className="text-xs">Aktív</SelectItem>
-                        <SelectItem value="inactive" className="text-xs">Inaktív</SelectItem>
+                        <SelectItem value="active" className="text-xs">{t('active')}</SelectItem>
+                        <SelectItem value="inactive" className="text-xs">{t('inactive')}</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(u)} title="Szerkesztés">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(u)} title={t('editTooltip')}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(u)} title="Törlés" className="text-destructive hover:text-destructive">
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(u)} title={t('deleteTooltip')} className="text-destructive hover:text-destructive">
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>

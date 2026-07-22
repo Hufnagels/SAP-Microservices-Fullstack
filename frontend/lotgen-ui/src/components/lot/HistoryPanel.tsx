@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { buildLotsPDF } from '@/lib/printPDF'
 import type { PdfResult } from '@/lib/printPDF'
 import { PdfPreviewModal } from './PdfPreviewModal'
+import { useI18n } from '@/i18n'
 
 interface Props {
   items:        LotItem[]
@@ -24,6 +25,7 @@ interface Props {
 export function HistoryPanel({
   items, onPrint, onPrintAll, onClear, onPdfCancel, onShowZpl, printingId,
 }: Props) {
+  const { t } = useI18n()
   const [pdfResult, setPdfResult] = useState<PdfResult | null>(null)
 
   const handlePdfOpen = () => {
@@ -47,26 +49,25 @@ export function HistoryPanel({
     <Card className="flex flex-col min-h-0">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Generált számok</CardTitle>
+          <CardTitle>{t('generatedNumbers')}</CardTitle>
           <div className="flex gap-2">
             {items.some(i => !i.printed) && (
               <Button variant="outline" size="sm" onClick={onPrintAll}>
                 <Printer className="h-3.5 w-3.5 mr-1.5" />
-                Összes nyomtat
+                {t('printAll')}
               </Button>
             )}
             <Button
               variant="outline" size="sm"
               onClick={handlePdfOpen}
               disabled={!items.length}
-              title="Avery 3474 — 3×8 = 24 cimke / A4"
             >
               <FileDown className="h-3.5 w-3.5 mr-1.5" />
               PDF
             </Button>
             <Button variant="ghost" size="sm" onClick={onClear} disabled={!items.length}>
               <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-              Törlés
+              {t('clearAll')}
             </Button>
           </div>
         </div>
@@ -75,6 +76,8 @@ export function HistoryPanel({
       <PdfPreviewModal
         result={pdfResult}
         itemCount={items.length}
+        perPage={pdfResult?.perPage ?? 24}
+        templateName={pdfResult?.templateName ?? ''}
         onConfirm={handlePdfConfirm}
         onCancel={handlePdfCancel}
       />
@@ -82,7 +85,7 @@ export function HistoryPanel({
       <CardContent className="p-0 flex-1 min-h-0">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-10">
-            Még nincs generált szám — kattints a Generálás gombra
+            {t('noNumbersYet')}
           </p>
         ) : (
           <ScrollArea className="h-[320px]">
@@ -114,6 +117,9 @@ function HistoryRow({
   onShowZpl: () => void
   printing:  boolean
 }) {
+  const { t, locale } = useI18n()
+  const bcp47 = locale === 'hu' ? 'hu-HU' : locale === 'de' ? 'de-DE' : 'en-US'
+
   return (
     <div className="flex items-center gap-3 py-2.5">
       <span className="font-mono text-sm font-medium flex-1 min-w-0 truncate">
@@ -125,18 +131,18 @@ function HistoryRow({
       </span>
 
       <Badge variant={item.printed ? 'success' : 'muted'} className="shrink-0">
-        {item.printed ? 'Nyomtatva' : 'Vár'}
+        {item.printed ? t('printed') : t('pending')}
       </Badge>
 
       <span className="text-[11px] text-muted-foreground font-mono shrink-0 w-[52px] text-right">
-        {item.timestamp.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        {item.timestamp.toLocaleTimeString(bcp47, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
       </span>
 
       <Button
         variant="ghost" size="icon"
         className="h-7 w-7 shrink-0"
         onClick={onShowZpl}
-        title="ZPL kód megtekintése"
+        title={t('viewZpl')}
       >
         <Code className="h-3.5 w-3.5" />
       </Button>
@@ -149,7 +155,7 @@ function HistoryRow({
         disabled={printing}
       >
         <Printer className={cn('h-3 w-3 mr-1', printing && 'animate-spin')} />
-        {printing ? '...' : item.printed ? 'Újra' : 'Nyomtat'}
+        {printing ? '...' : item.printed ? t('reprint') : t('print')}
       </Button>
     </div>
   )
