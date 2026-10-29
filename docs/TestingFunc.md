@@ -420,11 +420,11 @@ CHECK (sync_type IN ('sync','async','scheduledsync'));
 6. Main section
    1. Tabbed design as current
    2. Designer tab --> 
-- USE KONVA --> use /Users/pisti/My Projects.local/dev/VandZ/React - QR - THREE - excel import/frontend/src/features/LabelEditor2/ as example
+- USE KONVA --> use /Users/pisti/My Projects.local/10_it-coding/vandz/React - QR - THREE - excel import/frontend/src/features/LabelEditor2/ as example
 - on the current sidebar are: Text, Image, --> on the improved version too
-- Barcode - Users/pisti/My Projects.local/dev/VandZ/React - QR - THREE - excel import/frontend/src/features/ProductCode/components/BarCode3.jsx
+- Barcode - Users/pisti/My Projects.local/10_it-coding/vandz/React - QR - THREE - excel import/frontend/src/features/ProductCode/components/BarCode3.jsx
 - add QR 
-- add DataMaxrix - /Users/pisti/My Projects.local/dev/VandZ/React - QR - THREE - excel import/frontend/src/features/ProductCode/components/Datamatrix.jsx
+- add DataMaxrix - /Users/pisti/My Projects.local/10_it-coding/vandz/React - QR - THREE - excel import/frontend/src/features/ProductCode/components/Datamatrix.jsx
 
 Every object must be:
 - editable --> Text size, Bold

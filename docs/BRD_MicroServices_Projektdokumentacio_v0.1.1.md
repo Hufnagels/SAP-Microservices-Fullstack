@@ -559,7 +559,7 @@ sudo find /opt/microservices/files -type f | wc -l   # CT 503-on
 
 ```bash
 BK=~/Backups/colima_$(date +%Y%m%d); mkdir -p "$BK"
-cd "/Users/pisti/My Projects.local/dev/BRD/MicroServices"
+cd "/Users/pisti/My Projects.local/10_it-coding/brd-microservices"
 
 # 1) Named-volume-ban lévő OPC-UA DB
 docker compose exec -T postgres-opcua pg_dumpall -U postgres > "$BK/ms_postgres_opcua.sql"
@@ -578,7 +578,7 @@ docker volume ls > "$BK/volumes.txt"; docker image ls > "$BK/images.txt"
 
 **„A” lehetőség – csak a MicroServices-erőforrások törlése (a többi projekt megmarad)**
 ```bash
-cd "/Users/pisti/My Projects.local/dev/BRD/MicroServices"
+cd "/Users/pisti/My Projects.local/10_it-coding/brd-microservices"
 docker compose down --rmi local -v                                  # app-stack konténerek, image-ek, named volume-ok
 docker compose -f infrastructure/mssql/docker-compose.yml down      # MSSQL-konténer (az adat a data/mssql-ben marad)
 docker image prune -a                                               # a megmaradt, nem használt image-ek

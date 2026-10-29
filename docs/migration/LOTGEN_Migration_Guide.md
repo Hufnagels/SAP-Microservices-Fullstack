@@ -2,7 +2,7 @@
 
 **Scope:** Two related things:
 1. Syncing ongoing development from the **standalone** `LOTGEN` project
-   (`/Users/pisti/My Projects.local/dev/BRD/LOTGEN`) into this monorepo's
+   (`/Users/pisti/My Projects.local/10_it-coding/lotgen`) into this monorepo's
    `services/lotgen-service` + `frontend/lotgen-ui`.
 2. Deploying the lotgen module to the production LXC (already live — see
    [MIGRATION_SUMMARY.md](MIGRATION_SUMMARY.md)).

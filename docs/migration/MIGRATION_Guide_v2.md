@@ -173,7 +173,7 @@ rsync -avz --progress \
   --exclude='files/' \
   --exclude='**/__pycache__' \
   --exclude='*.pyc' \
-  "/Users/pisti/My Projects.local/dev/BRD/MicroServices/" \
+  "/Users/pisti/My Projects.local/10_it-coding/brd-microservices/" \
   "$DEST/"
 
 echo "Synced to $HOST"

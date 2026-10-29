@@ -4,10 +4,10 @@
 # specific integration (shared-JWT auth, Docker build context, nginx proxy).
 #
 # Usage: bash docs/migration/scripts/sync-lotgen.sh [path-to-standalone-LOTGEN]
-# Default source: /Users/pisti/My Projects.local/dev/BRD/LOTGEN
+# Default source: /Users/pisti/My Projects.local/10_it-coding/lotgen
 set -e
 
-SRC="${1:-/Users/pisti/My Projects.local/dev/BRD/LOTGEN}"
+SRC="${1:-/Users/pisti/My Projects.local/10_it-coding/lotgen}"
 DST="$(cd "$(dirname "$0")/../../.." && pwd)"
 
 BACKEND_SRC="$SRC/backend"

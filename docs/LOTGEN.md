@@ -1,7 +1,7 @@
 # LOTGEN — Sarzs / LOT Generáló és Nyomtató
 
 > Integrated into MicroServices 2026-05-17.
-> Standalone source: `/Users/pisti/My Projects.local/dev/BRD/LOTGEN/`
+> Standalone source: `/Users/pisti/My Projects.local/10_it-coding/lotgen/`
 
 ---
 
@@ -201,7 +201,7 @@ curl -s -X POST http://localhost/lot/generate \
 
 ## Standalone Development
 
-The original project remains at `/Users/pisti/My Projects.local/dev/BRD/LOTGEN/` with its own `docker-compose.yml` (standalone stack, port 8001 for backend, port 5439 for DB). Use that for local dev without the full MicroServices stack.
+The original project remains at `/Users/pisti/My Projects.local/10_it-coding/lotgen/` with its own `docker-compose.yml` (standalone stack, port 8001 for backend, port 5439 for DB). Use that for local dev without the full MicroServices stack.
 
 | Standalone | MicroServices |
 |---|---|
