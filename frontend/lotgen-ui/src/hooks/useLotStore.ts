@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import type { LotConfig, PrinterConfig, LotItem, LabelSize } from '@/types'
+import type { LotConfig, PrinterConfig, LotItem, LabelSize, ResetMode } from '@/types'
 import { formatLotNumber } from '@/lib/lot'
 import { generateZPL } from '@/lib/zpl'
 
@@ -23,6 +23,7 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
   const [lotConfig,     setLotConfig]     = useState<LotConfig>(DEFAULT_LOT_CONFIG)
   const [printerConfig, setPrinterConfig] = useState<PrinterConfig>(DEFAULT_PRINTER_CONFIG)
   const [counter,       setCounter]       = useState(1)
+  const [resetMode,     setResetModeState] = useState<ResetMode>('monthly')
   const [quantity,      setQuantity]      = useState(1)
   const [items,         setItems]         = useState<LotItem[]>([])
 
@@ -44,7 +45,11 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
       const res = await guardedFetch(`${API}/lot/counter/${prefix}`, {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
       })
-      if (res.ok) setCounter((await res.json()).counter)
+      if (res.ok) {
+        const data = await res.json()
+        setCounter(data.counter)
+        if (data.reset_mode) setResetModeState(data.reset_mode)
+      }
     } catch { /* backend unreachable */ }
   }, [guardedFetch])
 
@@ -75,6 +80,7 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
       }),
     })
 
+    if (res.status === 409) throw new Error('RESET_FORMAT_CONFLICT')
     if (!res.ok) throw new Error(`Generate failed: ${res.status}`)
     const { items: generated, next_counter } = await res.json()
 
@@ -135,6 +141,24 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
     } catch { /* non-critical */ }
   }, [guardedFetch, lotConfig.prefix])
 
+  /** Admin only (backend require_admin). Returns false on 403 / error. */
+  const setResetMode = useCallback(async (mode: ResetMode): Promise<boolean> => {
+    const tok = localStorage.getItem('lotgen_token')
+    if (!tok) return false
+    try {
+      const res = await guardedFetch(`${API}/lot/counter/${lotConfig.prefix}/reset-mode`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tok}` },
+        body:    JSON.stringify({ reset_mode: mode }),
+      })
+      if (!res.ok) return false
+      const data = await res.json()
+      setResetModeState(data.reset_mode)
+      setCounter(data.counter)
+      return true
+    } catch { return false }
+  }, [guardedFetch, lotConfig.prefix])
+
   const updateLotConfig = useCallback((partial: Partial<LotConfig>) => {
     setLotConfig(prev => ({ ...prev, ...partial }))
   }, [])
@@ -147,6 +171,7 @@ export function useLotStore(token: string | null, onUnauthorized?: () => void) {
     lotConfig,     updateLotConfig,
     printerConfig, updatePrinterConfig,
     counter,       setCounter,
+    resetMode,     setResetMode,
     quantity,      setQuantity,
     items,
     previewLot,

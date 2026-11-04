@@ -7,27 +7,31 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { RotateCcw } from 'lucide-react'
-import type { LotConfig, PrinterConfig, DateFormat, Separator as SepType, LabelSize } from '@/types'
-import { LABEL_SIZES } from '@/types'
+import { RotateCcw, AlertTriangle } from 'lucide-react'
+import type { LotConfig, PrinterConfig, DateFormat, Separator as SepType, LabelSize, ResetMode } from '@/types'
+import { LABEL_SIZES, RESET_CONFLICTS } from '@/types'
 import { useI18n } from '@/i18n'
 
 interface Props {
   lotConfig:            LotConfig
   printerConfig:        PrinterConfig
   counter:              number
+  resetMode:            ResetMode
+  canEditResetMode:     boolean
   onLotConfigChange:    (p: Partial<LotConfig>)     => void
   onPrinterConfigChange:(p: Partial<PrinterConfig>) => void
   onCounterChange:      (v: number) => void
   onCounterReset:       () => void
+  onResetModeChange:    (m: ResetMode) => void
 }
 
 export function ConfigPanel({
-  lotConfig, printerConfig, counter,
+  lotConfig, printerConfig, counter, resetMode, canEditResetMode,
   onLotConfigChange, onPrinterConfigChange,
-  onCounterChange, onCounterReset,
+  onCounterChange, onCounterReset, onResetModeChange,
 }: Props) {
   const { t, tf } = useI18n()
+  const conflict = RESET_CONFLICTS[resetMode].includes(lotConfig.dateFormat)
 
   return (
     <aside className="flex flex-col gap-3 w-[240px] shrink-0">
@@ -179,6 +183,30 @@ export function ConfigPanel({
               className="font-mono text-lg"
             />
           </div>
+          <div className="space-y-1">
+            <Label>{t('resetMode')}</Label>
+            <Select
+              value={resetMode}
+              onValueChange={v => onResetModeChange(v as ResetMode)}
+              disabled={!canEditResetMode}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t('resetNone')}</SelectItem>
+                <SelectItem value="monthly">{t('resetMonthly')}</SelectItem>
+                <SelectItem value="yearly">{t('resetYearly')}</SelectItem>
+              </SelectContent>
+            </Select>
+            {!canEditResetMode && (
+              <p className="text-xs text-muted-foreground">{t('resetModeAdminOnly')}</p>
+            )}
+          </div>
+          {conflict && (
+            <p className="flex gap-1.5 text-xs text-destructive">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              {t('resetConflict')}
+            </p>
+          )}
           <Button
             variant="outline"
             size="sm"

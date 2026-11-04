@@ -13,6 +13,9 @@ import type { Locale }  from '@/i18n'
 import type { LotItem } from '@/types'
 import { Tag } from 'lucide-react'
 
+const isResetConflict = (e: unknown) =>
+  e instanceof Error && e.message === 'RESET_FORMAT_CONFLICT'
+
 const LOCALE_LABELS: Record<Locale, string> = { hu: 'HU', en: 'EN', de: 'DE' }
 
 export default function App() {
@@ -64,8 +67,8 @@ export default function App() {
     try {
       const batch = await store.generate()
       toast.success(tf('toastGenerated', batch.length))
-    } catch {
-      toast.error(t('toastGenerateFailed'))
+    } catch (e) {
+      toast.error(t(isResetConflict(e) ? 'toastResetConflict' : 'toastGenerateFailed'))
     }
   }
 
@@ -77,8 +80,8 @@ export default function App() {
       for (const item of batch) {
         await printItem(item)
       }
-    } catch {
-      toast.error(t('toastGenerateFailed'))
+    } catch (e) {
+      toast.error(t(isResetConflict(e) ? 'toastResetConflict' : 'toastGenerateFailed'))
     }
   }
 
@@ -147,6 +150,11 @@ export default function App() {
             onPrinterConfigChange={store.updatePrinterConfig}
             onCounterChange={store.setCounter}
             onCounterReset={store.resetCounter}
+            resetMode={store.resetMode}
+            canEditResetMode={['admin', 'superadmin'].includes(auth.user?.role ?? '')}
+            onResetModeChange={async m => {
+              if (!(await store.setResetMode(m))) toast.error(t('toastResetModeFailed'))
+            }}
           />
 
           {/* Right: Preview + History + ZPL */}

@@ -32,6 +32,10 @@ class CounterSetRequest(BaseModel):
     value: int = Field(..., ge=1, le=99999)
 
 
+class ResetModeRequest(BaseModel):
+    reset_mode: str = Field(..., pattern="^(none|monthly|yearly)$")
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/health")
@@ -43,7 +47,7 @@ def health():
 def get_counter(prefix: str, _: dict = Depends(get_current_user)):
     if prefix not in VALID_PREFIXES:
         raise HTTPException(400, f"Invalid prefix. Valid: {sorted(VALID_PREFIXES)}")
-    return {"prefix": prefix, "counter": db.get_counter(prefix)}
+    return {"prefix": prefix, **db.get_counter(prefix)}
 
 
 @router.put("/counter/{prefix}")
@@ -52,6 +56,14 @@ def set_counter(prefix: str, req: CounterSetRequest, _: dict = Depends(get_curre
         raise HTTPException(400, f"Invalid prefix. Valid: {sorted(VALID_PREFIXES)}")
     db.set_counter(prefix, req.value)
     return {"prefix": prefix, "counter": req.value}
+
+
+@router.put("/counter/{prefix}/reset-mode")
+def set_reset_mode(prefix: str, req: ResetModeRequest, _: dict = Depends(require_admin)):
+    if prefix not in VALID_PREFIXES:
+        raise HTTPException(400, f"Invalid prefix. Valid: {sorted(VALID_PREFIXES)}")
+    db.set_reset_mode(prefix, req.reset_mode)
+    return {"prefix": prefix, **db.get_counter(prefix)}
 
 
 @router.post("/generate")
@@ -71,18 +83,23 @@ def generate(req: GenerateRequest, user: dict = Depends(get_current_user)):
     with db.get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT counter, updated_at FROM lot_counters WHERE prefix = %s FOR UPDATE",
+                "SELECT counter, updated_at, reset_mode FROM lot_counters "
+                "WHERE prefix = %s FOR UPDATE",
                 (req.prefix,),
             )
             row = cur.fetchone()
             if not row:
-                start = 1
+                start, reset_mode = 1, db.DEFAULT_RESET_MODE
             else:
-                counter, updated_at = row
-                if updated_at.year != today.year or updated_at.month != today.month:
-                    start = 1   # new month → restart from 0001
-                else:
-                    start = counter
+                counter, updated_at, reset_mode = row
+                start = db.effective_counter(counter, updated_at, reset_mode, today)
+
+            if db.reset_conflict(reset_mode, req.date_format):
+                raise HTTPException(409, detail={
+                    "code": "RESET_FORMAT_CONFLICT",
+                    "message": (f"reset_mode '{reset_mode}' with date_format "
+                                f"'{req.date_format}' would repeat lot numbers"),
+                })
 
         records = []
         for i in range(req.quantity):
@@ -106,10 +123,13 @@ def generate(req: GenerateRequest, user: dict = Depends(get_current_user)):
         next_counter = start + req.quantity
         inserted = []
         with conn.cursor(cursor_factory=RealDictCursor) as cur2:
-            cur2.execute(
-                "UPDATE lot_counters SET counter = %s, updated_at = NOW() WHERE prefix = %s",
-                (next_counter, req.prefix),
-            )
+            # Upsert: a missing row (prefix added without restart) must not stall the counter
+            cur2.execute("""
+                INSERT INTO lot_counters (prefix, counter, updated_at, reset_mode)
+                VALUES (%s, %s, NOW(), %s)
+                ON CONFLICT (prefix) DO UPDATE
+                SET counter = EXCLUDED.counter, updated_at = NOW()
+            """, (req.prefix, next_counter, reset_mode))
             for r in records:
                 # ON CONFLICT: if this lot_number already exists (e.g. after a counter reset),
                 # update the record so the user gets fresh history for the new run.

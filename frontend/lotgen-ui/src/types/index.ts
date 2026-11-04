@@ -1,6 +1,14 @@
 export type DateFormat = 'YYYYMMDD' | 'YYMMDD' | 'YYMM' | 'YYYYWW' | 'none'
 export type Separator  = '-' | '/' | '_' | ''
 export type LabelSize  = '70x37' | '80x50' | '105x48'
+export type ResetMode  = 'none' | 'monthly' | 'yearly'
+
+/** Mirrors backend database._RESET_CONFLICTS: these combinations repeat lot numbers. */
+export const RESET_CONFLICTS: Record<ResetMode, DateFormat[]> = {
+  none:    [],
+  monthly: ['none', 'YYYYWW'],
+  yearly:  ['none'],
+}
 
 export interface LotConfig {
   prefix:     string
